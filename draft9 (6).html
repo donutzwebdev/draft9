@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Draft 9</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --accent:#0078d4;--accent2:#1a8fe3;--accentdark:#005fa3;--accentglow:rgba(0,120,212,0.35);
+  --glass:rgba(255,255,255,0.07);--glass2:rgba(255,255,255,0.12);--glass3:rgba(255,255,255,0.18);
+  --border:rgba(255,255,255,0.12);--border2:rgba(255,255,255,0.22);
+  --text:#f3f3f3;--text2:rgba(243,243,243,0.65);--text3:rgba(243,243,243,0.35);
+  --taskbar-h:44px;--radius:8px;--radius-lg:12px;
+  --shadow:0 8px 32px rgba(0,0,0,0.45);--shadow2:0 2px 8px rgba(0,0,0,0.3);
+  --font:'Inter',sans-serif;
+}
+body{font-family:var(--font);background:#000;color:var(--text);height:100vh;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation;}
+
+/* ── BOOT ── */
+#boot-screen{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000;gap:20px;}
+.boot-logo{font-size:2rem;font-weight:300;letter-spacing:.2em;color:#fff;}
+.boot-logo span{color:var(--accent);font-weight:700;}
+.boot-spinner{width:36px;height:36px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--accent);border-radius:50%;animation:spin .9s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.boot-text{font-size:.72rem;color:rgba(255,255,255,.3);letter-spacing:.12em;}
+
+/* ── OOBE ── */
+#oobe{position:fixed;inset:0;z-index:9000;background:linear-gradient(135deg,#0d0d1a,#121228);display:none;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto;padding:20px 0;}
+.oobe-dots{display:flex;gap:8px;margin-bottom:28px;flex-shrink:0;}
+.oobe-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .3s;}
+.oobe-dot.active{background:var(--accent);width:24px;border-radius:4px;}
+.oobe-dot.done{background:rgba(255,255,255,.45);}
+.oobe-card{width:520px;max-width:calc(100vw - 32px);background:rgba(25,25,45,.85);backdrop-filter:blur(40px);border:1px solid var(--border2);border-radius:18px;padding:36px 40px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:24px;animation:oobeIn .4s cubic-bezier(.2,.8,.4,1);}
+@media(max-width:600px){.oobe-card{padding:24px 20px;gap:18px;}}
+@keyframes oobeIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:none}}
+.oobe-step{display:none;flex-direction:column;gap:18px;}
+.oobe-step.active{display:flex;}
+.oobe-eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:600;}
+.oobe-title{font-size:1.5rem;font-weight:700;line-height:1.2;}
+@media(max-width:600px){.oobe-title{font-size:1.25rem;}}
+.oobe-sub{font-size:.82rem;color:var(--text2);line-height:1.6;margin-top:4px;}
+.oobe-input{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;color:var(--text);font-family:var(--font);font-size:1rem;outline:none;width:100%;transition:border-color .18s,box-shadow .18s;}
+.oobe-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accentglow);}
+.oobe-nav{display:flex;justify-content:flex-end;gap:10px;margin-top:4px;}
+.oobe-btn{background:var(--accent);border:none;border-radius:var(--radius);padding:11px 24px;color:#fff;font-weight:600;font-size:.88rem;cursor:pointer;font-family:var(--font);transition:all .18s;box-shadow:0 2px 12px var(--accentglow);min-height:44px;}
+.oobe-btn:hover{background:var(--accent2);transform:translateY(-1px);}
+.oobe-btn:active{transform:none;}
+.oobe-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.oobe-btn.secondary{background:rgba(255,255,255,.08);box-shadow:none;border:1px solid var(--border);}
+.oobe-btn.secondary:hover{background:rgba(255,255,255,.14);}
+
+/* device choice cards */
+.device-cards{display:flex;gap:12px;}
+.device-card{flex:1;background:var(--glass);border:2px solid var(--border);border-radius:12px;padding:20px 12px;text-align:center;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:8px;}
+.device-card:hover{background:var(--glass2);border-color:var(--border2);}
+.device-card.selected{border-color:var(--accent);background:rgba(0,120,212,.12);}
+.device-card-icon{font-size:2rem;}
+.device-card-label{font-size:.82rem;font-weight:600;}
+.device-card-sub{font-size:.7rem;color:var(--text3);}
+
+/* name preview */
+#name-preview{font-size:.82rem;color:var(--text2);min-height:1.2em;transition:color .2s;}
+#name-preview.ready{color:var(--accent);}
+
+/* color picker */
+.color-picker-row{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;}
+.color-wheel-wrap{position:relative;width:160px;height:160px;flex-shrink:0;border-radius:50%;overflow:hidden;cursor:crosshair;box-shadow:0 4px 20px rgba(0,0,0,.5),0 0 0 2px var(--border2);}
+#color-wheel{width:100%;height:100%;display:block;}
+.color-picker-right{display:flex;flex-direction:column;gap:10px;flex:1;min-width:140px;}
+.color-preview-swatch{width:100%;height:56px;border-radius:10px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;transition:background .1s;}
+.color-preview-swatch span{font-size:.9rem;font-weight:700;}
+.color-preview-swatch small{opacity:.6;font-size:.63rem;}
+.color-presets{display:flex;flex-wrap:wrap;gap:7px;}
+.color-preset{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;flex-shrink:0;}
+.color-preset:hover,.color-preset.selected{border-color:#fff;transform:scale(1.15);}
+.color-hex-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:monospace;font-size:.82rem;outline:none;}
+.color-hex-input:focus{border-color:var(--accent);}
+
+/* timezone */
+.tz-select{background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;color:var(--text);font-family:var(--font);font-size:.88rem;outline:none;width:100%;cursor:pointer;min-height:44px;}
+.tz-select option{background:#1a1a2e;color:#f3f3f3;}
+
+/* wallpaper */
+.wp-section-label{font-size:.7rem;font-weight:600;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;}
+.wp-colors{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.wp-color{width:34px;height:34px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
+.wp-color:hover,.wp-color.selected{border-color:#fff;transform:scale(1.1);}
+.wp-import{display:flex;align-items:center;gap:10px;background:var(--glass);border:1px dashed var(--border2);border-radius:10px;padding:12px;cursor:pointer;transition:background .15s;}
+.wp-import:hover{background:var(--glass2);}
+.wp-import-icon{font-size:1.3rem;}
+.wp-import-text{font-size:.78rem;color:var(--text2);}
+.wp-import-text strong{display:block;color:var(--text);font-size:.82rem;}
+.wp-preview{width:100%;height:70px;border-radius:10px;border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--text3);background:var(--glass);transition:background .3s;background-size:cover;background-position:center;}
+
+/* welcome */
+.welcome-icon{font-size:2.5rem;text-align:center;}
+.welcome-card-text{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:18px;font-size:.86rem;line-height:1.8;color:var(--text2);}
+.welcome-card-text strong{color:var(--text);}
+
+/* ── DESKTOP ── */
+#desktop{position:fixed;inset:0;display:none;background-size:cover;background-position:center;}
+#desktop::before{content:'';position:absolute;inset:0;background:rgba(0,0,10,.12);pointer-events:none;}
+
+/* ── TASKBAR ── */
+#taskbar{position:fixed;bottom:0;left:0;right:0;height:var(--taskbar-h);background:rgba(15,15,28,.82);backdrop-filter:blur(40px) saturate(1.5);border-top:1px solid var(--border);display:none;align-items:center;z-index:500;padding:0 12px;gap:4px;}
+.taskbar-center{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:2px;}
+.taskbar-right{margin-left:auto;display:flex;align-items:center;gap:6px;}
+.tb-btn{height:36px;min-width:36px;padding:0 8px;background:none;border:none;border-radius:6px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.88rem;font-family:var(--font);transition:background .15s;position:relative;}
+.tb-btn:hover{background:var(--glass3);}
+.tb-btn.active{background:var(--glass2);}
+.tb-dot{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--accent);}
+.start-btn{height:34px;width:34px;background:none;border:none;border-radius:6px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+.start-btn:hover{background:var(--glass3);}
+#clock{font-size:.68rem;color:var(--text);text-align:right;line-height:1.5;cursor:default;white-space:nowrap;}
+.tb-user{display:flex;align-items:center;gap:5px;font-size:.7rem;color:var(--text2);padding:0 4px;}
+.tb-avatar{width:22px;height:22px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:#fff;flex-shrink:0;}
+/* fullscreen btn */
+#tb-fs{height:32px;width:32px;background:none;border:none;border-radius:6px;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;font-size:.85rem;}
+#tb-fs:hover{background:var(--glass3);color:var(--text);}
+
+/* ── MOBILE TASKBAR (bottom dock) ── */
+body.mobile #taskbar{height:56px;padding:0 8px;}
+body.mobile .taskbar-center{gap:0;}
+body.mobile .tb-btn{height:44px;min-width:44px;font-size:1.1rem;}
+body.mobile #tb-name{display:none;}
+body.mobile #clock{font-size:.62rem;}
+
+/* ── START MENU ── */
+#start-menu{position:fixed;bottom:calc(var(--taskbar-h)+8px);left:50%;transform:translateX(-50%) translateY(8px);width:min(560px,calc(100vw - 16px));background:rgba(18,18,32,.92);backdrop-filter:blur(40px) saturate(1.4);border:1px solid var(--border2);border-radius:14px;padding:20px;box-shadow:var(--shadow);z-index:400;display:none;animation:startUp .18s ease;}
+@keyframes startUp{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+#start-menu.open{display:block;}
+.start-search{width:100%;background:var(--glass);border:1px solid var(--border);border-radius:24px;padding:9px 16px;color:var(--text);font-family:var(--font);font-size:.85rem;outline:none;margin-bottom:16px;min-height:40px;}
+.start-search:focus{border-color:var(--accent);}
+.start-section-title{font-size:.68rem;font-weight:600;color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
+.start-apps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:16px;}
+.start-app{display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 6px;border-radius:8px;cursor:pointer;transition:background .15s;border:none;background:none;color:var(--text);font-family:var(--font);}
+.start-app:hover{background:var(--glass2);}
+.start-app-icon{font-size:1.7rem;line-height:1;}
+.start-app-name{font-size:.7rem;font-weight:500;}
+.start-footer{border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;justify-content:space-between;}
+.start-user{display:flex;align-items:center;gap:8px;}
+.start-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:#fff;}
+.start-username{font-size:.8rem;font-weight:500;}
+.start-power{background:none;border:none;color:var(--text2);cursor:pointer;padding:6px;border-radius:6px;transition:all .15s;display:flex;align-items:center;}
+.start-power:hover{background:rgba(255,80,80,.15);color:#ff6b6b;}
+
+/* ── WINDOWS ── */
+.win{position:fixed;background:rgba(18,18,32,.86);backdrop-filter:blur(32px) saturate(1.3);border:1px solid var(--border2);border-radius:var(--radius-lg);box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden;min-width:300px;min-height:200px;z-index:200;transition:box-shadow .15s;}
+.win.focused{box-shadow:var(--shadow),0 0 0 1px rgba(0,120,212,.3);z-index:250;}
+/* mobile: full-screen windows */
+body.mobile .win{border-radius:0;border:none;left:0!important;top:0!important;width:100vw!important;height:calc(100vh - 56px)!important;}
+body.mobile .win-resize{display:none;}
+.win-titlebar{height:36px;background:rgba(255,255,255,.04);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:8px;cursor:grab;flex-shrink:0;}
+body.mobile .win-titlebar{cursor:default;}
+.win-titlebar:active{cursor:grabbing;}
+.win-title{font-size:.78rem;font-weight:500;color:var(--text2);flex:1;pointer-events:none;}
+.win-controls{display:flex;gap:6px;margin-left:auto;}
+.win-ctrl{width:12px;height:12px;border-radius:50%;border:none;cursor:pointer;transition:opacity .15s;flex-shrink:0;}
+.win-ctrl:hover{opacity:.8;}
+.win-ctrl.close{background:#ff5f57;}
+.win-ctrl.min{background:#febc2e;}
+.win-ctrl.max{background:#28c840;}
+.win-body{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.win-resize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:se-resize;display:flex;align-items:flex-end;justify-content:flex-end;padding:3px;}
+.win-resize::after{content:'';display:block;width:8px;height:8px;border-right:2px solid var(--text3);border-bottom:2px solid var(--text3);border-radius:1px;}
+
+/* ── BROWSER ── */
+.browser-bar{display:flex;align-items:center;gap:5px;padding:5px 8px;background:rgba(0,0,0,.2);border-bottom:1px solid var(--border);flex-shrink:0;}
+.browser-nbtn{width:28px;height:28px;border-radius:6px;background:var(--glass);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:.88rem;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0;}
+.browser-nbtn:hover{background:var(--glass2);color:var(--text);}
+.browser-omni{flex:1;display:flex;align-items:center;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:20px;padding:0 12px;height:28px;gap:6px;transition:border-color .15s;}
+.browser-omni:focus-within{border-color:var(--accent);}
+.browser-omni input{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:.78rem;font-family:var(--font);}
+.browser-omni input::placeholder{color:var(--text3);}
+.browser-frame{flex:1;border:none;width:100%;background:#000;}
+.browser-init{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:30px;}
+.browser-init-logo{font-size:2rem;font-weight:700;letter-spacing:.08em;color:var(--text2);}
+.browser-init-sub{font-size:.73rem;color:var(--text3);}
+.browser-prog-bg{width:180px;height:2px;background:var(--glass);border-radius:2px;overflow:hidden;}
+.browser-prog{height:100%;background:var(--accent);border-radius:2px;width:0;transition:width .3s;}
+.browser-status{font-size:.63rem;color:var(--text3);font-family:monospace;}
+
+/* ── GAMES ── */
+.games-body{display:flex;flex-direction:column;height:100%;background:rgba(10,10,20,.5);}
+.games-header{padding:12px 14px 8px;border-bottom:1px solid var(--border);font-size:.92rem;font-weight:600;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px;overflow-y:auto;flex:1;}
+.game-card{background:var(--glass);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;}
+.game-card:hover,.game-card:active{background:var(--glass2);border-color:var(--border2);transform:translateY(-2px);box-shadow:var(--shadow2);}
+.game-thumb{height:80px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;background:linear-gradient(135deg,rgba(0,120,212,.15),rgba(0,0,0,.3));}
+.game-info{padding:7px 9px 9px;}
+.game-name{font-size:.76rem;font-weight:600;margin-bottom:2px;}
+.game-tag{font-size:.63rem;color:var(--text3);}
+.games-viewer{flex:1;display:flex;flex-direction:column;position:absolute;inset:36px 0 0 0;background:rgba(10,10,20,.97);z-index:10;}
+.games-viewer-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.games-back{background:var(--glass);border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text);font-size:.75rem;font-family:var(--font);cursor:pointer;transition:all .15s;min-height:34px;}
+.games-back:hover{background:var(--glass2);}
+.games-iframe{flex:1;border:none;width:100%;}
+
+/* ── SETTINGS ── */
+.settings-body{display:flex;height:100%;}
+.settings-sidebar{width:160px;background:rgba(0,0,0,.2);border-right:1px solid var(--border);padding:8px 5px;flex-shrink:0;overflow-y:auto;}
+body.mobile .settings-sidebar{width:130px;}
+.settings-nav-item{display:flex;align-items:center;gap:7px;padding:9px 9px;border-radius:6px;cursor:pointer;font-size:.76rem;color:var(--text2);transition:all .15s;border:none;background:none;font-family:var(--font);width:100%;min-height:38px;}
+.settings-nav-item:hover{background:var(--glass);color:var(--text);}
+.settings-nav-item.active{background:var(--glass2);color:var(--text);}
+.settings-content{flex:1;padding:18px;overflow-y:auto;}
+.settings-section-title{font-size:.95rem;font-weight:600;margin-bottom:14px;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);gap:12px;}
+.settings-row-label{font-size:.8rem;}
+.settings-row-sub{font-size:.7rem;color:var(--text2);margin-top:2px;}
+.settings-val{font-size:.78rem;color:var(--text2);text-align:right;flex-shrink:0;}
+.toggle{width:38px;height:20px;border-radius:10px;background:rgba(255,255,255,.15);border:none;cursor:pointer;position:relative;transition:background .18s;flex-shrink:0;}
+.toggle.on{background:var(--accent);}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .18s;}
+.toggle.on::after{left:20px;}
+.signout-btn{margin-top:18px;background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.25);border-radius:var(--radius);padding:9px 20px;color:#ff6b6b;font-family:var(--font);font-size:.82rem;cursor:pointer;transition:all .15s;min-height:40px;}
+.signout-btn:hover{background:rgba(255,80,80,.25);}
+.settings-tz{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:.8rem;outline:none;cursor:pointer;min-height:36px;}
+.settings-tz option{background:#1a1a2e;}
+.settings-name-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-family:var(--font);font-size:.82rem;outline:none;}
+.settings-name-input:focus{border-color:var(--accent);}
+.settings-save-btn{margin-top:8px;background:var(--accent);border:none;border-radius:6px;padding:7px 16px;color:#fff;font-family:var(--font);font-size:.78rem;cursor:pointer;transition:all .15s;}
+.settings-save-btn:hover{background:var(--accent2);}
+
+/* ── STORE ── */
+.store-body{display:flex;flex-direction:column;height:100%;background:rgba(8,8,18,.6);}
+.store-topbar{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.store-topbar-title{font-size:.95rem;font-weight:700;flex:1;}
+.store-search{flex:1;max-width:220px;background:var(--glass);border:1px solid var(--border);border-radius:20px;padding:6px 14px;color:var(--text);font-family:var(--font);font-size:.78rem;outline:none;}
+.store-search:focus{border-color:var(--accent);}
+.store-refresh{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--text2);font-size:.75rem;font-family:var(--font);cursor:pointer;transition:all .15s;min-height:30px;}
+.store-refresh:hover{background:var(--glass);color:var(--text);}
+.store-tabs{display:flex;gap:4px;padding:10px 16px 0;border-bottom:1px solid var(--border);flex-shrink:0;}
+.store-tab{background:none;border:none;border-bottom:2px solid transparent;padding:6px 14px 8px;color:var(--text2);font-family:var(--font);font-size:.78rem;font-weight:500;cursor:pointer;transition:all .15s;}
+.store-tab:hover{color:var(--text);}
+.store-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.store-content{flex:1;overflow-y:auto;padding:16px;}
+.store-section-label{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px;}
+.store-card{background:var(--glass);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:all .18s;}
+.store-card:hover{background:var(--glass2);border-color:var(--border2);transform:translateY(-1px);box-shadow:var(--shadow2);}
+.store-card-top{display:flex;align-items:flex-start;gap:10px;}
+.store-card-icon{font-size:2rem;line-height:1;flex-shrink:0;}
+.store-card-meta{flex:1;min-width:0;}
+.store-card-name{font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.store-card-ver{font-size:.65rem;color:var(--text3);margin-top:1px;}
+.store-card-type{display:inline-block;font-size:.6rem;font-weight:700;padding:1px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.05em;margin-top:3px;}
+.store-card-type.html{background:rgba(255,165,0,.15);color:#ffa500;}
+.store-card-type.js{background:rgba(0,200,100,.15);color:#00c864;}
+.store-card-desc{font-size:.74rem;color:var(--text2);line-height:1.5;flex:1;}
+.store-card-actions{display:flex;gap:6px;align-items:center;}
+.store-install-btn{flex:1;background:var(--accent);border:none;border-radius:6px;padding:7px 10px;color:#fff;font-size:.75rem;font-weight:600;font-family:var(--font);cursor:pointer;transition:all .15s;min-height:32px;}
+.store-install-btn:hover{background:var(--accent2);}
+.store-install-btn:disabled{opacity:.5;cursor:not-allowed;}
+.store-install-btn.installed{background:rgba(0,200,100,.15);color:#00c864;border:1px solid rgba(0,200,100,.3);}
+.store-install-btn.installed:hover{background:rgba(255,80,80,.15);color:#ff6b6b;border-color:rgba(255,80,80,.3);}
+.store-open-btn{background:var(--glass);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:.75rem;font-family:var(--font);cursor:pointer;transition:all .15s;min-height:32px;}
+.store-open-btn:hover{background:var(--glass2);}
+.store-empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:.82rem;}
+.store-empty-icon{font-size:2.5rem;margin-bottom:10px;}
+.store-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:40px;color:var(--text2);font-size:.82rem;}
+.store-spinner{width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+.store-err{text-align:center;padding:30px;color:#ff6b6b;font-size:.8rem;line-height:1.6;}
+.store-err-icon{font-size:2rem;margin-bottom:8px;}
+
+/* ── DESKTOP ICONS ── */
+.desktop-icon{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:8px;border-radius:8px;width:72px;text-align:center;transition:background .15s;z-index:1;}
+.desktop-icon:hover,.desktop-icon:active{background:rgba(255,255,255,.1);}
+.desktop-icon-img{font-size:2.2rem;line-height:1;}
+.desktop-icon-label{font-size:.63rem;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);}
+body.mobile .desktop-icon{width:64px;}
+
+/* ── NOTIFICATION ── */
+#notif{position:fixed;bottom:calc(var(--taskbar-h)+12px);right:14px;background:rgba(20,20,38,.94);backdrop-filter:blur(20px);border:1px solid var(--border2);border-radius:10px;padding:11px 15px;max-width:260px;box-shadow:var(--shadow);z-index:600;font-size:.77rem;transform:translateY(8px);opacity:0;transition:all .25s;pointer-events:none;}
+#notif.show{transform:none;opacity:1;}
+#notif strong{display:block;margin-bottom:3px;font-size:.8rem;}
+
+/* scrollbars */
+::-webkit-scrollbar{width:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px;}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.25);}
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot-screen">
+  <div class="boot-logo">Draft<span>9</span></div>
+  <div class="boot-spinner"></div>
+  <div class="boot-text">STARTING UP...</div>
+</div>
+
+<!-- OOBE -->
+<div id="oobe">
+  <div class="oobe-dots" id="oobe-dots"></div>
+  <div class="oobe-card" id="oobe-card">
+
+    <!-- Step 1: Device -->
+    <div class="oobe-step active" id="oobe-step-1">
+      <div>
+        <div class="oobe-eyebrow">Step 1 of 6</div>
+        <div class="oobe-title">What are you using?</div>
+        <div class="oobe-sub">This helps Draft 9 optimise the layout for your device.</div>
+      </div>
+      <div class="device-cards">
+        <div class="device-card" id="dev-desktop" onclick="selectDevice('desktop')">
+          <div class="device-card-icon">🖥️</div>
+          <div class="device-card-label">Computer</div>
+          <div class="device-card-sub">Desktop / Laptop</div>
+        </div>
+        <div class="device-card" id="dev-mobile" onclick="selectDevice('mobile')">
+          <div class="device-card-icon">📱</div>
+          <div class="device-card-label">Mobile</div>
+          <div class="device-card-sub">Phone / Tablet</div>
+        </div>
+      </div>
+      <div class="oobe-nav">
+        <button class="oobe-btn" id="oobe-dev-btn" onclick="oobeNext()" disabled>Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Name -->
+    <div class="oobe-step" id="oobe-step-2">
+      <div>
+        <div class="oobe-eyebrow">Step 2 of 6</div>
+        <div class="oobe-title">What should I call you?</div>
+        <div class="oobe-sub">This name appears across the OS. You can change it later in Settings.</div>
+      </div>
+      <input class="oobe-input" id="oobe-name" type="text" placeholder="Your name…" maxlength="32" oninput="onNameInput(this.value)" onkeydown="if(event.key==='Enter')oobeNext()">
+      <div id="name-preview"></div>
+      <div class="oobe-nav">
+        <button class="oobe-btn secondary" onclick="oobePrev()">← Back</button>
+        <button class="oobe-btn" id="oobe-name-btn" onclick="oobeNext()" disabled>Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Color -->
+    <div class="oobe-step" id="oobe-step-3">
+      <div>
+        <div class="oobe-eyebrow">Step 3 of 6</div>
+        <div class="oobe-title">Pick your accent color</div>
+        <div class="oobe-sub">Shows on buttons, highlights, and key details. Smaller elements use a darker shade automatically.</div>
+      </div>
+      <div class="color-picker-row">
+        <div class="color-wheel-wrap">
+          <canvas id="color-wheel" width="160" height="160"></canvas>
+        </div>
+        <div class="color-picker-right">
+          <div class="color-preview-swatch" id="color-swatch">
+            <span id="swatch-main">■</span>
+            <small id="swatch-hex">#0078d4</small>
+          </div>
+          <div>
+            <div style="font-size:.66rem;color:var(--text3);margin-bottom:6px;">PRESETS</div>
+            <div class="color-presets" id="color-presets"></div>
+          </div>
+          <input class="color-hex-input" id="color-hex" type="text" value="#0078d4" maxlength="7" oninput="onHexInput(this.value)" placeholder="#rrggbb">
+        </div>
+      </div>
+      <div class="oobe-nav">
+        <button class="oobe-btn secondary" onclick="oobePrev()">← Back</button>
+        <button class="oobe-btn" onclick="oobeNext()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 4: Timezone -->
+    <div class="oobe-step" id="oobe-step-4">
+      <div>
+        <div class="oobe-eyebrow">Step 4 of 6</div>
+        <div class="oobe-title">What's your time zone?</div>
+        <div class="oobe-sub">Used for the taskbar clock. You can change it later in Settings → Account.</div>
+      </div>
+      <select class="tz-select" id="tz-select"></select>
+      <div class="oobe-nav">
+        <button class="oobe-btn secondary" onclick="oobePrev()">← Back</button>
+        <button class="oobe-btn" onclick="oobeNext()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 5: Wallpaper -->
+    <div class="oobe-step" id="oobe-step-5">
+      <div>
+        <div class="oobe-eyebrow">Step 5 of 6</div>
+        <div class="oobe-title">Choose your wallpaper</div>
+        <div class="oobe-sub">Pick a solid color or upload your own image. Changeable in Settings → Wallpaper.</div>
+      </div>
+      <div>
+        <div class="wp-section-label">Solid Color</div>
+        <div class="wp-colors" id="wp-colors"></div>
+        <div class="wp-import" onclick="document.getElementById('wp-file').click()">
+          <div class="wp-import-icon">🖼️</div>
+          <div class="wp-import-text"><strong>Import image</strong>Choose a file from your device</div>
+        </div>
+        <input type="file" id="wp-file" accept="image/*" style="display:none" onchange="onWallpaperFile(this)">
+      </div>
+      <div class="wp-preview" id="wp-preview">Preview</div>
+      <div class="oobe-nav">
+        <button class="oobe-btn secondary" onclick="oobePrev()">← Back</button>
+        <button class="oobe-btn" onclick="oobeNext()">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 6: Welcome -->
+    <div class="oobe-step" id="oobe-step-6">
+      <div class="welcome-icon">🖥️</div>
+      <div>
+        <div class="oobe-eyebrow">You're all set</div>
+        <div class="oobe-title" id="welcome-title">Welcome to Draft 9!</div>
+      </div>
+      <div class="welcome-card-text">
+        This web-based Operating System is <strong>as simple as you'd think</strong> — if you've used a computer before, this should be easy. I appreciate you came here. <strong>Enjoy!</strong>
+      </div>
+      <div class="oobe-nav">
+        <button class="oobe-btn secondary" onclick="oobePrev()">← Back</button>
+        <button class="oobe-btn" onclick="finishOobe()" style="flex:1;">Let's go →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- DESKTOP -->
+<div id="desktop">
+  <div class="desktop-icon" style="top:24px;left:16px;" onclick="openApp('browser')">
+    <div class="desktop-icon-img">🌐</div><div class="desktop-icon-label">Browser</div>
+  </div>
+  <div class="desktop-icon" style="top:24px;left:96px;" onclick="openApp('games')">
+    <div class="desktop-icon-img">🎮</div><div class="desktop-icon-label">Games</div>
+  </div>
+  <div class="desktop-icon" style="top:24px;left:176px;" onclick="openApp('settings')">
+    <div class="desktop-icon-img">⚙️</div><div class="desktop-icon-label">Settings</div>
+  </div>
+  <div class="desktop-icon" style="top:24px;left:256px;" onclick="openApp('store')">
+    <div class="desktop-icon-img">🛒</div><div class="desktop-icon-label">Store</div>
+  </div>
+  <div id="dynamic-desktop-icons"></div>
+</div>
+
+<!-- TASKBAR -->
+<div id="taskbar">
+  <button class="start-btn" onclick="toggleStartMenu()">
+    <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3 3h8v8H3zm10 0h8v8h-8zM3 13h8v8H3zm10 0h8v8h-8z" opacity=".9"/></svg>
+  </button>
+  <div class="taskbar-center">
+    <button class="tb-btn" id="tb-browser" onclick="openApp('browser')" title="Browser">🌐</button>
+    <button class="tb-btn" id="tb-games" onclick="openApp('games')" title="Games">🎮</button>
+    <button class="tb-btn" id="tb-settings" onclick="openApp('settings')" title="Settings">⚙️</button>
+    <button class="tb-btn" id="tb-store" onclick="openApp('store')" title="Store">🛒</button>
+  </div>
+  <div class="taskbar-right">
+    <button id="tb-fs" onclick="toggleFullscreen()" title="Fullscreen">⛶</button>
+    <div class="tb-user">
+      <div class="tb-avatar" id="tb-avatar">?</div>
+      <span id="tb-name"></span>
+    </div>
+    <div id="clock"></div>
+  </div>
+</div>
+
+<!-- START MENU -->
+<div id="start-menu">
+  <input class="start-search" type="text" placeholder="Search apps…" oninput="filterStartApps(this.value)" id="start-search-input">
+  <div class="start-section-title">Pinned</div>
+  <div class="start-apps" id="start-apps-grid">
+    <button class="start-app" onclick="openApp('browser');closeStart()">
+      <div class="start-app-icon">🌐</div><div class="start-app-name">Browser</div>
+    </button>
+    <button class="start-app" onclick="openApp('games');closeStart()">
+      <div class="start-app-icon">🎮</div><div class="start-app-name">Games</div>
+    </button>
+    <button class="start-app" onclick="openApp('settings');closeStart()">
+      <div class="start-app-icon">⚙️</div><div class="start-app-name">Settings</div>
+    </button>
+    <button class="start-app" onclick="openApp('store');closeStart()">
+      <div class="start-app-icon">🛒</div><div class="start-app-name">Store</div>
+    </button>
+  </div>
+  <div id="start-installed-section" style="display:none;">
+    <div class="start-section-title" style="margin-top:12px;">Installed</div>
+    <div class="start-apps" id="start-installed-grid"></div>
+  </div>
+  <div class="start-footer">
+    <div class="start-user">
+      <div class="start-avatar" id="start-avatar">?</div>
+      <div class="start-username" id="start-username">User</div>
+    </div>
+    <button class="start-power" onclick="signOut()" title="Reset / Sign out">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notif"><strong id="notif-title"></strong><span id="notif-body"></span></div>
+
+<script>
+// ── CONFIG ──────────────────────────────────────
+const SCRAMJET_CDN = 'https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@latest/dist/';
+const WISP_SERVER  = 'wss://wisp.mercuryworkshop.dev/wisp/';
+const OOBE_TOTAL   = 6;
+
+// ── STATE ────────────────────────────────────────
+let currentUser = null;
+let windows     = {};
+let zTop        = 200;
+let startOpen   = false;
+let oobeStep    = 1;
+let isMobile    = false;
+
+let oobeData = {
+  device:  '',
+  name:    '',
+  accent:  '#0078d4',
+  tz:      Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+  wpColor: '#1a1a2e',
+  wpImage: null,
+};
+
+const WP_COLORS = ['#1a1a2e','#0d1b2a','#1b1b1b','#0a0a0a','#1a2820','#1f1624','#2a1a1a','#162028','#2d2a1a','#0f0f1e'];
+const COLOR_PRESETS = ['#0078d4','#e81224','#ff8c00','#107c10','#b146c2','#00b4d8','#f7c948','#ff69b4','#00cc88','#ffffff'];
+
+// ── BOOT ─────────────────────────────────────────
+window.addEventListener('load', () => {
+  startClock();
+  const prefs  = localStorage.getItem('d9_prefs');
+  const oobeOk = localStorage.getItem('d9_oobe_done');
+  setTimeout(() => {
+    hideBoot();
+    if (oobeOk && prefs) {
+      applyPrefs(JSON.parse(prefs));
+      currentUser = { username: oobeData.name || 'User' };
+      enterDesktop();
+    } else {
+      startOobe();
+    }
+  }, 1600);
+});
+
+function hideBoot() {
+  const b = document.getElementById('boot-screen');
+  b.style.transition = 'opacity .4s'; b.style.opacity = '0';
+  setTimeout(() => b.style.display = 'none', 400);
+}
+
+function applyPrefs(p) {
+  Object.assign(oobeData, p);
+  applyAccent(p.accent || '#0078d4');
+  applyWallpaper(p.wpColor || '#1a1a2e', p.wpImage || null);
+  setDeviceMode(p.device || (window.innerWidth < 768 ? 'mobile' : 'desktop'));
+}
+
+function savePrefs() {
+  localStorage.setItem('d9_prefs', JSON.stringify(oobeData));
+}
+
+// ── OOBE ─────────────────────────────────────────
+function startOobe() {
+  // Auto-detect device as default selection
+  const autoMobile = window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent);
+  if (autoMobile) selectDevice('mobile'); else selectDevice('desktop');
+  document.getElementById('oobe').style.display = 'flex';
+  renderOobeDots();
+  buildColorWheel();
+  buildColorPresets();
+  buildTzSelect();
+  buildWpColors();
+}
+
+function renderOobeDots() {
+  const c = document.getElementById('oobe-dots');
+  c.innerHTML = '';
+  for (let i = 1; i <= OOBE_TOTAL; i++) {
+    const d = document.createElement('div');
+    d.className = 'oobe-dot' + (i === oobeStep ? ' active' : i < oobeStep ? ' done' : '');
+    c.appendChild(d);
+  }
+}
+
+function showOobeStep(n) {
+  document.querySelectorAll('.oobe-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('oobe-step-' + n).classList.add('active');
+  const card = document.getElementById('oobe-card');
+  card.style.animation = 'none';
+  requestAnimationFrame(() => card.style.animation = '');
+  oobeStep = n; renderOobeDots();
+}
+
+function oobeNext() {
+  if (oobeStep === 1 && !oobeData.device) return;
+  if (oobeStep === 2) {
+    const n = document.getElementById('oobe-name').value.trim();
+    if (!n) return;
+    oobeData.name = n;
+    document.getElementById('welcome-title').textContent = 'Welcome to Draft 9, ' + n + '!';
+  }
+  if (oobeStep < OOBE_TOTAL) showOobeStep(oobeStep + 1);
+}
+function oobePrev() { if (oobeStep > 1) showOobeStep(oobeStep - 1); }
+
+function finishOobe() {
+  setDeviceMode(oobeData.device);
+  applyAccent(oobeData.accent);
+  applyWallpaper(oobeData.wpColor, oobeData.wpImage);
+  savePrefs();
+  localStorage.setItem('d9_oobe_done', '1');
+  currentUser = { username: oobeData.name || 'User' };
+  const oobe = document.getElementById('oobe');
+  oobe.style.transition = 'opacity .5s'; oobe.style.opacity = '0';
+  setTimeout(() => { oobe.style.display = 'none'; enterDesktop(); }, 500);
+}
+
+// ── Step 1: Device ───────────────────
+function selectDevice(type) {
+  oobeData.device = type;
+  document.getElementById('dev-desktop').classList.toggle('selected', type === 'desktop');
+  document.getElementById('dev-mobile').classList.toggle('selected', type === 'mobile');
+  document.getElementById('oobe-dev-btn').disabled = false;
+}
+
+// ── Step 2: Name ─────────────────────
+function onNameInput(v) {
+  const btn = document.getElementById('oobe-name-btn');
+  const prev = document.getElementById('name-preview');
+  v = v.trim();
+  if (v) { prev.textContent = 'Hi, ' + v + '! 👋'; prev.className = 'ready'; btn.disabled = false; }
+  else   { prev.textContent = ''; prev.className = ''; btn.disabled = true; }
+}
+
+// ── Step 3: Color wheel ──────────────
+function buildColorPresets() {
+  const c = document.getElementById('color-presets'); c.innerHTML = '';
+  COLOR_PRESETS.forEach(hex => {
+    const el = document.createElement('div');
+    el.className = 'color-preset' + (hex === oobeData.accent ? ' selected' : '');
+    el.style.background = hex; el.title = hex;
+    el.onclick = () => selectAccent(hex);
+    c.appendChild(el);
+  });
+}
+
+function buildColorWheel() {
+  const canvas = document.getElementById('color-wheel');
+  const ctx = canvas.getContext('2d');
+  const cx = 80, cy = 80, r = 80;
+  for (let a = 0; a < 360; a++) {
+    const sa = (a - 1) * Math.PI / 180, ea = (a + 1) * Math.PI / 180;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    g.addColorStop(0, '#fff'); g.addColorStop(1, 'hsl(' + a + ',100%,50%)');
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, sa, ea); ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+  }
+  const dark = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r);
+  dark.addColorStop(0, 'rgba(0,0,0,0)'); dark.addColorStop(1, 'rgba(0,0,0,0.55)');
+  ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(cx, cy, r, 0, 2 * Math.PI); ctx.fill();
+  canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const px = Math.round((e.clientX - rect.left) * (160 / rect.width));
+    const py = Math.round((e.clientY - rect.top)  * (160 / rect.height));
+    const d = ctx.getImageData(Math.min(159, Math.max(0, px)), Math.min(159, Math.max(0, py)), 1, 1).data;
+    selectAccent('#' + [d[0], d[1], d[2]].map(v => v.toString(16).padStart(2, '0')).join(''));
+  });
+}
+
+function selectAccent(hex) {
+  oobeData.accent = hex;
+  const hexEl = document.getElementById('color-hex'); if (hexEl) hexEl.value = hex;
+  const shEl  = document.getElementById('swatch-hex'); if (shEl) shEl.textContent = hex;
+  const sw    = document.getElementById('color-swatch'); if (sw) sw.style.background = hex;
+  document.querySelectorAll('.color-preset').forEach(el => el.classList.toggle('selected', el.title === hex));
+  applyAccent(hex);
+}
+function onHexInput(v) { if (/^#[0-9a-fA-F]{6}$/.test(v)) selectAccent(v); }
+function applyAccent(hex) {
+  document.documentElement.style.setProperty('--accent', hex);
+  document.documentElement.style.setProperty('--accent2', lighten(hex, 15));
+  document.documentElement.style.setProperty('--accentdark', darken(hex, 15));
+  document.documentElement.style.setProperty('--accentglow', hex + '55');
+}
+function hexToRgb(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function rgbToHex(r,g,b){return'#'+[r,g,b].map(v=>Math.min(255,Math.max(0,v)).toString(16).padStart(2,'0')).join('');}
+function lighten(h,a){const[r,g,b]=hexToRgb(h);return rgbToHex(r+a,g+a,b+a);}
+function darken(h,a){const[r,g,b]=hexToRgb(h);return rgbToHex(r-a,g-a,b-a);}
+
+// ── Step 4: Timezone ─────────────────
+function buildTzSelect() {
+  const sel = document.getElementById('tz-select');
+  const tzList = ['Pacific/Honolulu','America/Anchorage','America/Los_Angeles','America/Denver','America/Chicago','America/New_York','America/Sao_Paulo','Atlantic/Reykjavik','Europe/London','Europe/Paris','Europe/Berlin','Europe/Moscow','Asia/Dubai','Asia/Karachi','Asia/Kolkata','Asia/Dhaka','Asia/Bangkok','Asia/Shanghai','Asia/Tokyo','Australia/Sydney','Pacific/Auckland','UTC'];
+  const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  [...new Set([detected, ...tzList])].forEach(tz => {
+    const o = document.createElement('option');
+    o.value = tz; o.textContent = tz.replace(/_/g, ' ');
+    if (tz === detected) o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.onchange = () => oobeData.tz = sel.value;
+}
+
+// ── Step 5: Wallpaper ────────────────
+function buildWpColors() {
+  const c = document.getElementById('wp-colors'); c.innerHTML = '';
+  WP_COLORS.forEach(hex => {
+    const el = document.createElement('div');
+    el.className = 'wp-color' + (hex === oobeData.wpColor ? ' selected' : '');
+    el.style.background = hex; el.title = hex;
+    el.onclick = () => selectWpColor(hex);
+    c.appendChild(el);
+  });
+}
+function selectWpColor(hex) {
+  oobeData.wpColor = hex; oobeData.wpImage = null;
+  document.querySelectorAll('#wp-colors .wp-color').forEach(el => el.classList.toggle('selected', el.title === hex));
+  const p = document.getElementById('wp-preview');
+  if (p) { p.style.backgroundImage = 'none'; p.style.backgroundColor = hex; p.textContent = ''; }
+}
+function onWallpaperFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    oobeData.wpImage = e.target.result;
+    const p = document.getElementById('wp-preview');
+    if (p) { p.style.backgroundImage = 'url(' + e.target.result + ')'; p.style.backgroundColor = ''; p.textContent = ''; }
+  };
+  reader.readAsDataURL(file);
+}
+function applyWallpaper(color, imgData) {
+  const d = document.getElementById('desktop'); if (!d) return;
+  if (imgData) { d.style.backgroundImage = 'url(' + imgData + ')'; d.style.backgroundColor = ''; }
+  else         { d.style.backgroundImage = 'none'; d.style.backgroundColor = color; }
+}
+
+// ── DEVICE MODE ──────────────────────
+function setDeviceMode(type) {
+  isMobile = (type === 'mobile');
+  document.body.classList.toggle('mobile', isMobile);
+  oobeData.device = type;
+  const tbH = isMobile ? '56px' : '44px';
+  document.documentElement.style.setProperty('--taskbar-h', tbH);
+}
+
+// ── DESKTOP ──────────────────────────
+function enterDesktop() {
+  applyAccent(oobeData.accent);
+  applyWallpaper(oobeData.wpColor, oobeData.wpImage);
+  setDeviceMode(oobeData.device || 'desktop');
+  const desktop = document.getElementById('desktop');
+  const taskbar = document.getElementById('taskbar');
+  desktop.style.display = 'block'; taskbar.style.display = 'flex';
+  desktop.style.opacity = '0'; taskbar.style.opacity = '0';
+  setTimeout(() => {
+    desktop.style.transition = 'opacity .5s'; taskbar.style.transition = 'opacity .5s';
+    desktop.style.opacity = '1'; taskbar.style.opacity = '1';
+  }, 50);
+  const name = currentUser?.username || 'User';
+  document.getElementById('tb-avatar').textContent    = name[0].toUpperCase();
+  document.getElementById('tb-name').textContent      = name;
+  document.getElementById('start-avatar').textContent = name[0].toUpperCase();
+  document.getElementById('start-username').textContent = name;
+  showNotif('Draft 9', 'Welcome, ' + name + '! Enjoy.');
+  loadInstalledApps();
+  refreshInstalledUI();
+}
+
+function signOut() {
+  localStorage.removeItem('d9_oobe_done'); localStorage.removeItem('d9_prefs');
+  currentUser = null;
+  Object.keys(windows).forEach(id => { const w = document.getElementById(id); if (w) w.remove(); });
+  windows = {};
+  document.getElementById('desktop').style.display = 'none';
+  document.getElementById('taskbar').style.display = 'none';
+  closeStart();
+  oobeData = { device:'', name:'', accent:'#0078d4', tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', wpColor:'#1a1a2e', wpImage:null };
+  oobeStep = 1;
+  const oobe = document.getElementById('oobe');
+  oobe.style.opacity = '1'; oobe.style.display = 'flex';
+  document.querySelectorAll('.oobe-step').forEach(s => s.classList.remove('active'));
+  document.getElementById('oobe-step-1').classList.add('active');
+  renderOobeDots();
+}
+
+// ── CLOCK ────────────────────────────
+function startClock() {
+  function tick() {
+    const tz = oobeData.tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const now = new Date();
+    const t = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: tz });
+    const d = now.toLocaleDateString([], { month: 'numeric', day: 'numeric', year: 'numeric', timeZone: tz });
+    document.getElementById('clock').innerHTML = t + '<br>' + d;
+  }
+  tick(); setInterval(tick, 1000);
+}
+
+// ── FULLSCREEN ───────────────────────
+function toggleFullscreen() {
+  const el = document.documentElement;
+  const btn = document.getElementById('tb-fs');
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+    const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+    if (req) {
+      req.call(el).then(() => { if (btn) btn.textContent = '⊡'; }).catch(err => {
+        showNotif('Fullscreen', 'Could not enter fullscreen: ' + (err.message || 'blocked by browser'));
+      });
+    } else {
+      showNotif('Fullscreen', 'Not supported in this browser.');
+    }
+  } else {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+    if (exit) exit.call(document).then(() => { if (btn) btn.textContent = '⛶'; }).catch(() => {});
+  }
+}
+document.addEventListener('fullscreenchange', () => {
+  const btn = document.getElementById('tb-fs');
+  if (btn) btn.textContent = document.fullscreenElement ? '⊡' : '⛶';
+});
+document.addEventListener('webkitfullscreenchange', () => {
+  const btn = document.getElementById('tb-fs');
+  if (btn) btn.textContent = document.webkitFullscreenElement ? '⊡' : '⛶';
+});
+
+// ── START MENU ───────────────────────
+function toggleStartMenu() {
+  startOpen = !startOpen;
+  document.getElementById('start-menu').classList.toggle('open', startOpen);
+  if (startOpen) setTimeout(() => document.getElementById('start-search-input').focus(), 50);
+}
+function closeStart() { startOpen = false; document.getElementById('start-menu').classList.remove('open'); }
+document.addEventListener('click', e => {
+  if (startOpen && !e.target.closest('#start-menu') && !e.target.closest('.start-btn')) closeStart();
+});
+function filterStartApps(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll('.start-app').forEach(el => {
+    el.style.display = el.querySelector('.start-app-name').textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+
+// ── WINDOW MANAGER ───────────────────
+function createWindow(id, title, w, h, x, y, bodyHtml) {
+  if (windows[id]) { focusWindow(id); return document.getElementById(id); }
+  const win = document.createElement('div');
+  win.className = 'win focused'; win.id = id;
+  if (!isMobile) win.style.cssText = `width:${w}px;height:${h}px;left:${x}px;top:${y}px;`;
+  win.innerHTML = `
+    <div class="win-titlebar" id="tb-${id}">
+      <div class="win-title">${title}</div>
+      <div class="win-controls">
+        <button class="win-ctrl min" onclick="minimizeWindow('${id}')" title="Minimize"></button>
+        <button class="win-ctrl max" onclick="maximizeWindow('${id}')" title="Maximize"></button>
+        <button class="win-ctrl close" onclick="closeWindow('${id}')" title="Close"></button>
+      </div>
+    </div>
+    <div class="win-body" id="body-${id}">${bodyHtml}</div>
+    <div class="win-resize" id="rsz-${id}"></div>
+  `;
+  document.body.appendChild(win);
+  windows[id] = { minimized: false, maxed: false, prevRect: null };
+  if (!isMobile) { makeDraggable(win, document.getElementById('tb-' + id)); makeResizable(win, document.getElementById('rsz-' + id)); }
+  win.addEventListener('mousedown', () => focusWindow(id));
+  win.addEventListener('touchstart', () => focusWindow(id), { passive: true });
+  updateTaskbarDot(id, true);
+  return win;
+}
+
+function focusWindow(id) {
+  Object.keys(windows).forEach(wid => { const w = document.getElementById(wid); if (w) w.classList.remove('focused'); });
+  const win = document.getElementById(id);
+  if (win) { win.style.zIndex = ++zTop; win.classList.add('focused'); }
+}
+
+function closeWindow(id) {
+  const win = document.getElementById(id); if (win) win.remove();
+  delete windows[id]; updateTaskbarDot(id, false);
+}
+
+function minimizeWindow(id) {
+  const win = document.getElementById(id); if (!win || !windows[id]) return;
+  if (windows[id].minimized) { win.style.display = 'flex'; windows[id].minimized = false; focusWindow(id); }
+  else                       { win.style.display = 'none'; windows[id].minimized = true; }
+}
+
+function maximizeWindow(id) {
+  const win = document.getElementById(id); if (!win || !windows[id] || isMobile) return;
+  if (windows[id].maxed) {
+    const r = windows[id].prevRect;
+    win.style.cssText = `width:${r.w}px;height:${r.h}px;left:${r.x}px;top:${r.y}px;border-radius:var(--radius-lg);`;
+    windows[id].maxed = false;
+  } else {
+    windows[id].prevRect = { w: win.offsetWidth, h: win.offsetHeight, x: win.offsetLeft, y: win.offsetTop };
+    win.style.cssText = `width:100vw;height:calc(100vh - var(--taskbar-h));left:0;top:0;border-radius:0;`;
+    windows[id].maxed = true;
+  }
+}
+
+function updateTaskbarDot(id, open) {
+  const appId = id.replace('win-', '');
+  const tbBtn = document.getElementById('tb-' + appId); if (!tbBtn) return;
+  let dot = tbBtn.querySelector('.tb-dot');
+  if (open && !dot) { dot = document.createElement('div'); dot.className = 'tb-dot'; tbBtn.appendChild(dot); tbBtn.classList.add('active'); }
+  else if (!open && dot) { dot.remove(); tbBtn.classList.remove('active'); }
+}
+
+function makeDraggable(win, handle) {
+  let ox, oy, dx, dy;
+  const down = e => {
+    if (e.target.classList.contains('win-ctrl')) return;
+    if (windows[win.id]?.maxed) return;
+    const pt = e.touches ? e.touches[0] : e;
+    dx = pt.clientX; dy = pt.clientY; ox = win.offsetLeft; oy = win.offsetTop;
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    e.preventDefault();
+  };
+  const move = e => { win.style.left = (ox + e.clientX - dx) + 'px'; win.style.top = Math.max(0, oy + e.clientY - dy) + 'px'; };
+  const up   = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+  handle.addEventListener('mousedown', down);
+}
+
+function makeResizable(win, handle) {
+  handle.addEventListener('mousedown', e => {
+    const sx = e.clientX, sy = e.clientY, sw = win.offsetWidth, sh = win.offsetHeight;
+    const move = mv => { win.style.width = Math.max(300, sw + mv.clientX - sx) + 'px'; win.style.height = Math.max(200, sh + mv.clientY - sy) + 'px'; };
+    const up   = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up); e.preventDefault();
+  });
+}
+
+// ── APP LAUNCHER ─────────────────────
+function openApp(app) {
+  closeStart();
+  const id = 'win-' + app;
+  if (windows[id]) {
+    if (windows[id].minimized) minimizeWindow(id); else focusWindow(id);
+    return;
+  }
+  if (app === 'browser') openBrowser();
+  else if (app === 'games') openGames();
+  else if (app === 'settings') openSettings();
+  else if (app === 'store') openStore();
+}
+
+// ── BROWSER ──────────────────────────
+function openBrowser(url) {
+  const id = 'win-browser';
+  const cx = Math.max(0, window.innerWidth / 2 - 450), cy = 30;
+  createWindow(id, '🌐 Browser', 900, 600, cx, cy, `
+    <div class="browser-bar">
+      <button class="browser-nbtn" onclick="browserNav(-1)">&#8592;</button>
+      <button class="browser-nbtn" onclick="browserNav(1)">&#8594;</button>
+      <button class="browser-nbtn" onclick="browserReload()">&#8635;</button>
+      <div class="browser-omni">
+        <input id="browser-url" type="text" placeholder="Search or enter URL…" onkeydown="if(event.key==='Enter')browserGo()">
+      </div>
+      <button class="browser-nbtn" onclick="browserGo()" style="width:auto;padding:0 8px;font-size:.7rem;font-weight:700;">Go</button>
+    </div>
+    <div class="browser-init" id="browser-init">
+      <div class="browser-init-logo">Draft 9</div>
+      <div class="browser-init-sub">// powered by scramjet</div>
+      <div class="browser-prog-bg"><div class="browser-prog" id="browser-prog"></div></div>
+      <div class="browser-status" id="browser-stat">Loading…</div>
+    </div>
+    <iframe id="browser-frame" class="browser-frame" style="display:none" allowfullscreen
+      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
+  `);
+  focusWindow(id);
+  initScramjet(url || 'https://www.google.com');
+}
+
+let scramjetReady = false, scramjetCtrl = null;
+async function initScramjet(startUrl) {
+  const prog = document.getElementById('browser-prog');
+  const stat = document.getElementById('browser-stat');
+  if (!prog) return;
+  const setP = (p, t) => { if (prog) prog.style.width = p + '%'; if (stat) stat.textContent = t; };
+  try {
+    setP(10, 'Registering service worker…');
+    if (!navigator.serviceWorker) { setP(100, 'Direct mode.'); browserLoadDirect(startUrl); return; }
+    setP(40, 'Connecting WISP…');
+    if (!scramjetCtrl) {
+      try {
+        const mod = await import(SCRAMJET_CDN + 'scramjet.controller.js');
+        scramjetCtrl = new mod.ScramjetController({
+          prefix: '/scramjet/',
+          files: { wasm: SCRAMJET_CDN+'scramjet.wasm.js', worker: SCRAMJET_CDN+'scramjet.worker.js', client: SCRAMJET_CDN+'scramjet.client.js', shared: SCRAMJET_CDN+'scramjet.shared.js', sync: SCRAMJET_CDN+'scramjet.sync.js' },
+          codec: { encode: u => btoa(u), decode: u => atob(u) }
+        });
+        await scramjetCtrl.init();
+        scramjetCtrl.connect(new BareMux.BareMuxConnection('/baremux/worker.js'));
+        await scramjetCtrl.setTransport('/epoxy/index.mjs', [{ wisp: WISP_SERVER }]);
+        setP(80, 'Ready!'); scramjetReady = true;
+      } catch (e) { console.warn('Scramjet:', e); setP(100, 'Direct mode.'); browserLoadDirect(startUrl); return; }
+    }
+    setP(100, 'Ready'); scramjetReady = true; browserGotoUrl(startUrl);
+  } catch (e) { browserLoadDirect(startUrl); }
+}
+function browserLoadDirect(url) {
+  const f = document.getElementById('browser-frame'), i = document.getElementById('browser-init');
+  if (!f) return; if (i) i.style.display = 'none'; f.style.display = 'block'; f.src = url;
+  const u = document.getElementById('browser-url'); if (u) u.value = url;
+}
+function browserGotoUrl(url) {
+  const f = document.getElementById('browser-frame'), i = document.getElementById('browser-init');
+  if (!f) return; if (i) i.style.display = 'none'; f.style.display = 'block';
+  const u = document.getElementById('browser-url'); if (u) u.value = url;
+  f.src = (scramjetReady && scramjetCtrl) ? scramjetCtrl.encodeUrl(url) : url;
+}
+function resolveUrl(raw) {
+  raw = raw.trim();
+  try { const u = new URL(raw); if (u.protocol==='http:') u.protocol='https:'; return u.toString(); } catch(e){}
+  try { const u2 = new URL('https://'+raw); if (u2.hostname.includes('.')&&!u2.hostname.includes(' ')) return u2.toString(); } catch(e){}
+  return 'https://www.google.com/search?q=' + encodeURIComponent(raw);
+}
+function browserGo() { const v = document.getElementById('browser-url')?.value; if (v) browserGotoUrl(resolveUrl(v)); }
+function browserNav(dir) { const f = document.getElementById('browser-frame'); if (!f) return; dir<0 ? f.contentWindow?.history.back() : f.contentWindow?.history.forward(); }
+function browserReload() { const f = document.getElementById('browser-frame'); if (f) f.contentWindow?.location.reload(); }
+
+// ── GAMES ────────────────────────────
+const GAMES = [
+  {name:'2048',icon:'🔢',tag:'Puzzle',url:'https://play2048.co/'},
+  {name:'Wordle',icon:'📝',tag:'Word',url:'https://www.nytimes.com/games/wordle/index.html'},
+  {name:'Snake',icon:'🐍',tag:'Arcade',url:'https://www.google.com/fbx?fbx=snake_arcade'},
+  {name:'Chess',icon:'♟️',tag:'Strategy',url:'https://www.chess.com/play/computer'},
+  {name:'Pac-Man',icon:'👾',tag:'Arcade',url:'https://www.google.com/logos/2010/pacman10-i.html'},
+  {name:'Tetris',icon:'🟦',tag:'Puzzle',url:'https://tetris.com/play-tetris'},
+  {name:'Flappy Bird',icon:'🐦',tag:'Arcade',url:'https://flappybird.io/'},
+  {name:'Minesweeper',icon:'💣',tag:'Puzzle',url:'https://minesweeperonline.com/'},
+  {name:'Cookie Clicker',icon:'🍪',tag:'Idle',url:'https://orteil.dashnet.org/cookieclicker/'},
+];
+function openGames() {
+  const id = 'win-games';
+  const cards = GAMES.map(g => `<div class="game-card" onclick="launchGame('${g.url}','${g.name}','${id}')"><div class="game-thumb">${g.icon}</div><div class="game-info"><div class="game-name">${g.name}</div><div class="game-tag">${g.tag}</div></div></div>`).join('');
+  createWindow(id, '🎮 Games', 560, 500, Math.max(0, window.innerWidth/2-280), 50,
+    `<div class="games-body"><div class="games-header">🎮 Games</div><div class="games-grid">${cards}</div></div>`);
+  focusWindow(id);
+}
+function launchGame(url, name, winId) {
+  const body = document.getElementById('body-' + winId); if (!body) return;
+  let v = body.querySelector('.games-viewer'); if (v) v.remove();
+  v = document.createElement('div'); v.className = 'games-viewer';
+  v.innerHTML = `<div class="games-viewer-bar"><button class="games-back" onclick="closeGame('${winId}')">← Back</button><span style="font-size:.78rem;color:var(--text2);margin-left:4px;">${name}</span></div><iframe class="games-iframe" src="${url}" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>`;
+  body.style.position = 'relative'; body.appendChild(v);
+}
+function closeGame(winId) { const body = document.getElementById('body-'+winId); if (!body) return; const v = body.querySelector('.games-viewer'); if (v) v.remove(); }
+
+// ── SETTINGS ─────────────────────────
+function openSettings() {
+  const id = 'win-settings';
+  createWindow(id, '⚙️ Settings', 540, 480, Math.max(0, window.innerWidth/2-270), 70,
+    `<div class="settings-body">
+      <div class="settings-sidebar">
+        <button class="settings-nav-item active" onclick="settingsPage('account',this)">👤 Account</button>
+        <button class="settings-nav-item" onclick="settingsPage('appearance',this)">🎨 Appearance</button>
+        <button class="settings-nav-item" onclick="settingsPage('wallpaper',this)">🖼️ Wallpaper</button>
+        <button class="settings-nav-item" onclick="settingsPage('system',this)">💻 System</button>
+        <button class="settings-nav-item" onclick="settingsPage('about',this)">ℹ️ About</button>
+      </div>
+      <div class="settings-content" id="settings-content">${settingsAccountHTML()}</div>
+    </div>`);
+  focusWindow(id);
+}
+
+function settingsPage(page, btn) {
+  document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const c = document.getElementById('settings-content'); if (!c) return;
+  const pages = { account: settingsAccountHTML, appearance: settingsAppearanceHTML, wallpaper: settingsWallpaperHTML, system: settingsSystemHTML, about: settingsAboutHTML };
+  if (pages[page]) c.innerHTML = pages[page]();
+}
+
+function settingsAccountHTML() {
+  const name = currentUser?.username || 'User';
+  return `<div class="settings-section-title">Account</div>
+    <div class="settings-row"><div><div class="settings-row-label">Display name</div></div>
+      <input class="settings-name-input" id="settings-name-in" value="${oobeData.name||name}" style="max-width:160px;">
+    </div>
+    <div style="margin-top:-4px;margin-bottom:8px;text-align:right;">
+      <button class="settings-save-btn" onclick="saveDisplayName()">Save</button>
+    </div>
+    <div class="settings-row"><div class="settings-row-label">Time zone</div>
+      <select class="settings-tz" id="settings-tz-sel" onchange="saveTimezone(this.value)" style="max-width:180px;">${buildTzOptions()}</select>
+    </div>
+    <div class="settings-row"><div class="settings-row-label">Device mode</div>
+      <div style="display:flex;gap:6px;">
+        <button class="settings-save-btn" style="${!isMobile?'background:var(--accent);':'background:var(--glass);border:1px solid var(--border);color:var(--text2);box-shadow:none;'}" onclick="changeDevice('desktop')">🖥️ Desktop</button>
+        <button class="settings-save-btn" style="${isMobile?'background:var(--accent);':'background:var(--glass);border:1px solid var(--border);color:var(--text2);box-shadow:none;'}" onclick="changeDevice('mobile')">📱 Mobile</button>
+      </div>
+    </div>
+    <button class="signout-btn" onclick="signOut()">Reset OS</button>`;
+}
+
+function buildTzOptions() {
+  const tzList = ['Pacific/Honolulu','America/Anchorage','America/Los_Angeles','America/Denver','America/Chicago','America/New_York','America/Sao_Paulo','Atlantic/Reykjavik','Europe/London','Europe/Paris','Europe/Berlin','Europe/Moscow','Asia/Dubai','Asia/Karachi','Asia/Kolkata','Asia/Dhaka','Asia/Bangkok','Asia/Shanghai','Asia/Tokyo','Australia/Sydney','Pacific/Auckland','UTC'];
+  const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return [...new Set([detected, ...tzList])].map(tz => `<option value="${tz}"${tz===oobeData.tz?' selected':''}>${tz.replace(/_/g,' ')}</option>`).join('');
+}
+
+function saveDisplayName() {
+  const v = document.getElementById('settings-name-in')?.value.trim();
+  if (!v) return;
+  oobeData.name = v;
+  if (currentUser) currentUser.username = v;
+  document.getElementById('tb-name').textContent       = v;
+  document.getElementById('tb-avatar').textContent     = v[0].toUpperCase();
+  document.getElementById('start-avatar').textContent  = v[0].toUpperCase();
+  document.getElementById('start-username').textContent = v;
+  savePrefs();
+  showNotif('Settings', 'Name updated to ' + v);
+}
+
+function saveTimezone(tz) {
+  oobeData.tz = tz; savePrefs();
+  showNotif('Settings', 'Time zone set to ' + tz.replace(/_/g,' '));
+}
+
+function changeDevice(type) {
+  setDeviceMode(type); savePrefs();
+  // Reopen settings after layout change
+  closeWindow('win-settings');
+  setTimeout(() => openSettings(), 50);
+  showNotif('Settings', 'Switched to ' + (type==='mobile'?'Mobile':'Desktop') + ' mode');
+}
+
+function settingsAppearanceHTML() {
+  return `<div class="settings-section-title">Accent Color</div>
+    <div class="settings-row">
+      <div class="settings-row-label">Pick color</div>
+      <input type="color" value="${oobeData.accent}" style="width:40px;height:30px;border:none;background:none;cursor:pointer;border-radius:6px;"
+        oninput="applyAccent(this.value);oobeData.accent=this.value;" onchange="savePrefs()">
+    </div>
+    <div style="margin-top:8px;"><div style="font-size:.7rem;color:var(--text3);margin-bottom:8px;">PRESETS</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        ${COLOR_PRESETS.map(h=>`<div style="width:28px;height:28px;border-radius:50%;background:${h};cursor:pointer;border:2px solid ${h===oobeData.accent?'#fff':'transparent'};transition:all .15s;" onclick="applyAccent('${h}');oobeData.accent='${h}';savePrefs();settingsPage('appearance',document.querySelector('.settings-nav-item.active'));"></div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function settingsWallpaperHTML() {
+  return `<div class="settings-section-title">Wallpaper</div>
+    <div class="wp-section-label" style="margin-top:0;">Solid Color</div>
+    <div class="wp-colors" id="settings-wp-colors">
+      ${WP_COLORS.map(h=>`<div class="wp-color${h===oobeData.wpColor?' selected':''}" style="background:${h}" title="${h}" onclick="settingsSetWp('${h}')"></div>`).join('')}
+    </div>
+    <div class="wp-import" onclick="document.getElementById('settings-wp-file').click()">
+      <div class="wp-import-icon">🖼️</div>
+      <div class="wp-import-text"><strong>Import image</strong>Choose a file from your device</div>
+    </div>
+    <input type="file" id="settings-wp-file" accept="image/*" style="display:none" onchange="settingsWpFile(this)">`;
+}
+
+function settingsSetWp(hex) {
+  oobeData.wpColor = hex; oobeData.wpImage = null;
+  document.querySelectorAll('#settings-wp-colors .wp-color').forEach(el => el.classList.toggle('selected', el.title===hex));
+  applyWallpaper(hex, null); savePrefs();
+}
+function settingsWpFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = e => { oobeData.wpImage = e.target.result; applyWallpaper(oobeData.wpColor, e.target.result); savePrefs(); };
+  r.readAsDataURL(file);
+}
+
+function settingsSystemHTML() {
+  return `<div class="settings-section-title">System</div>
+    <div class="settings-row">
+      <div><div class="settings-row-label">Fullscreen</div><div class="settings-row-sub">Enter fullscreen mode</div></div>
+      <button class="settings-save-btn" onclick="toggleFullscreen()">⛶ Toggle</button>
+    </div>
+    <div class="settings-row"><div class="settings-row-label">Dark mode</div><button class="toggle on" disabled></button></div>`;
+}
+
+function settingsAboutHTML() {
+  return `<div class="settings-section-title">About Draft 9</div>
+    <div class="settings-row"><div class="settings-row-label">Version</div><div class="settings-val">Draft 9 · Build 2.0</div></div>
+    <div class="settings-row"><div class="settings-row-label">Browser engine</div><div class="settings-val">Scramjet (WISP)</div></div>
+    <div class="settings-row"><div class="settings-row-label">Device mode</div><div class="settings-val">${isMobile?'Mobile':'Desktop'}</div></div>
+    <div class="settings-row"><div class="settings-row-label">Built with</div><div class="settings-val">Pure HTML · No frameworks</div></div>`;
+}
+
+// ── NOTIFICATION ─────────────────────
+let notifTimer;
+function showNotif(title, body) {
+  const n = document.getElementById('notif');
+  document.getElementById('notif-title').textContent = title;
+  document.getElementById('notif-body').textContent = body;
+  n.classList.add('show'); clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => n.classList.remove('show'), 3500);
+}
+
+// ── STORE ────────────────────────────
+// Set this to your GitHub raw catalog URL
+const STORE_CATALOG_URL = 'https://cdn.jsdelivr.net/gh/donutzwebdev/draft9-store@main/catalog.json';
+
+let storeCatalog   = [];   // fetched from GitHub
+let storeInstalled = {};   // { appId: { ...appMeta, code: '...' } } saved in localStorage
+let storeTab       = 'browse';
+let storeQuery     = '';
+
+function loadInstalledApps() {
+  try { storeInstalled = JSON.parse(localStorage.getItem('d9_installed') || '{}'); }
+  catch(e) { storeInstalled = {}; }
+}
+function saveInstalledApps() {
+  // Don't save full code in localStorage if too large — store metadata only, fetch code on launch
+  const meta = {};
+  Object.entries(storeInstalled).forEach(([id, app]) => {
+    meta[id] = { ...app, code: app.code ? app.code.substring(0, 10) !== '' ? true : false : false };
+  });
+  localStorage.setItem('d9_installed', JSON.stringify(storeInstalled));
+}
+
+function openStore() {
+  loadInstalledApps();
+  const id = 'win-store';
+  createWindow(id, '🛒 Store', 720, 540, Math.max(0, window.innerWidth/2-360), 40, `
+    <div class="store-body">
+      <div class="store-topbar">
+        <div class="store-topbar-title">🛒 Draft 9 Store</div>
+        <input class="store-search" type="text" placeholder="Search apps…" oninput="storeQueryChange(this.value)" id="store-search-input">
+        <button class="store-refresh" onclick="storeFetchCatalog(true)">↻ Refresh</button>
+      </div>
+      <div class="store-tabs">
+        <button class="store-tab active" id="store-tab-browse" onclick="storeSetTab('browse')">Browse</button>
+        <button class="store-tab" id="store-tab-installed" onclick="storeSetTab('installed')">Installed</button>
+      </div>
+      <div class="store-content" id="store-content">
+        <div class="store-loading"><div class="store-spinner"></div>Fetching catalog…</div>
+      </div>
+    </div>
+  `);
+  focusWindow(id);
+  storeFetchCatalog(false);
+}
+
+async function storeFetchCatalog(force) {
+  // Use cached catalog if available and not forcing refresh
+  if (!force && storeCatalog.length > 0) { storeRender(); return; }
+  storeSetContent(`<div class="store-loading"><div class="store-spinner"></div>Fetching catalog from GitHub…</div>`);
+  try {
+    const res = await fetch(STORE_CATALOG_URL + '?_=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    storeCatalog = await res.json();
+    storeRender();
+  } catch(e) {
+    storeSetContent(`
+      <div class="store-err">
+        <div class="store-err-icon">⚠️</div>
+        <strong>Could not load catalog</strong><br><br>
+        Make sure your GitHub repo is public and the catalog.json URL is correct.<br><br>
+        <code style="font-size:.7rem;background:rgba(255,255,255,.06);padding:4px 8px;border-radius:4px;">${STORE_CATALOG_URL}</code><br><br>
+        <button class="store-refresh" onclick="storeFetchCatalog(true)" style="margin-top:8px;">Try again</button>
+      </div>
+    `);
+  }
+}
+
+function storeSetContent(html) {
+  const c = document.getElementById('store-content'); if (c) c.innerHTML = html;
+}
+
+function storeSetTab(tab) {
+  storeTab = tab;
+  document.getElementById('store-tab-browse')?.classList.toggle('active', tab==='browse');
+  document.getElementById('store-tab-installed')?.classList.toggle('active', tab==='installed');
+  storeRender();
+}
+
+function storeQueryChange(q) {
+  storeQuery = q.toLowerCase();
+  storeRender();
+}
+
+function storeRender() {
+  const c = document.getElementById('store-content'); if (!c) return;
+  if (storeTab === 'browse') {
+    let apps = storeCatalog;
+    if (storeQuery) apps = apps.filter(a => a.name.toLowerCase().includes(storeQuery) || (a.description||'').toLowerCase().includes(storeQuery));
+    if (!apps.length) {
+      c.innerHTML = `<div class="store-empty"><div class="store-empty-icon">🔍</div>No apps found for "${storeQuery}"</div>`;
+      return;
+    }
+    // Group by category
+    const cats = {};
+    apps.forEach(a => { const cat = a.category || 'Apps'; (cats[cat] = cats[cat]||[]).push(a); });
+    c.innerHTML = Object.entries(cats).map(([cat, items]) => `
+      <div class="store-section-label">${cat}</div>
+      <div class="store-grid">${items.map(storeCardHTML).join('')}</div>
+    `).join('');
+  } else {
+    // Installed tab
+    const apps = Object.values(storeInstalled);
+    const q = storeQuery;
+    const filtered = q ? apps.filter(a => a.name.toLowerCase().includes(q)) : apps;
+    if (!filtered.length) {
+      c.innerHTML = `<div class="store-empty"><div class="store-empty-icon">📦</div>${q ? 'No installed apps match "'+q+'"' : "You haven't installed any apps yet."}</div>`;
+      return;
+    }
+    c.innerHTML = `<div class="store-grid">${filtered.map(storeCardHTML).join('')}</div>`;
+  }
+}
+
+function storeCardHTML(app) {
+  const isInstalled = !!storeInstalled[app.id];
+  const typeClass   = (app.type||'html').toLowerCase();
+  const installLabel = isInstalled ? 'Uninstall' : 'Install';
+  const installClass = isInstalled ? 'store-install-btn installed' : 'store-install-btn';
+  return `
+    <div class="store-card" id="store-card-${app.id}">
+      <div class="store-card-top">
+        <div class="store-card-icon">${app.icon||'📦'}</div>
+        <div class="store-card-meta">
+          <div class="store-card-name">${app.name}</div>
+          <div class="store-card-ver">v${app.version||'1.0'}</div>
+          <span class="store-card-type ${typeClass}">${typeClass}</span>
+        </div>
+      </div>
+      <div class="store-card-desc">${app.description||''}</div>
+      <div class="store-card-actions">
+        <button class="${installClass}" id="store-btn-${app.id}"
+          onclick="storeToggleInstall(${JSON.stringify(JSON.stringify(app))})">
+          ${installLabel}
+        </button>
+        ${isInstalled ? `<button class="store-open-btn" onclick="launchInstalledApp('${app.id}')">Open</button>` : ''}
+      </div>
+    </div>`;
+}
+
+async function storeToggleInstall(appJson) {
+  const app = JSON.parse(appJson);
+  const btn = document.getElementById('store-btn-' + app.id);
+  if (storeInstalled[app.id]) {
+    delete storeInstalled[app.id];
+    saveInstalledApps();
+    refreshInstalledUI();
+    storeRender();
+    showNotif('Store', app.name + ' uninstalled.');
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Installing…'; }
+  // Convert any raw.githubusercontent.com URL to jsDelivr
+  let fetchUrl = app.url;
+  fetchUrl = fetchUrl.replace(
+    /https:\/\/raw\.githubusercontent\.com\/([^/]+)\/([^/]+)\/([^/]+)\/(.*)/,
+    'https://cdn.jsdelivr.net/gh/$1/$2@$3/$4'
+  );
+  // Add cache-buster
+  fetchUrl += (fetchUrl.includes('?') ? '&' : '?') + '_=' + Date.now();
+  try {
+    const res = await fetch(fetchUrl);
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' from ' + fetchUrl);
+    const code = await res.text();
+    if (!code || code.trim().length === 0) throw new Error('Downloaded file was empty');
+    storeInstalled[app.id] = { ...app, code };
+    saveInstalledApps();
+    refreshInstalledUI();
+    storeRender();
+    showNotif('Store', app.name + ' installed! Find it in Start Menu.');
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Install'; }
+    showNotif('Store', 'Failed: ' + e.message);
+    console.error('Install error:', e);
+  }
+}
+
+function launchInstalledApp(appId) {
+  closeStart();
+  const app = storeInstalled[appId];
+  if (!app) return;
+  const id = 'win-app-' + appId;
+  if (windows[id]) { if (windows[id].minimized) minimizeWindow(id); else focusWindow(id); return; }
+  const cx = Math.max(0, window.innerWidth/2-400), cy = 50;
+
+  if (app.type === 'html') {
+    // Render HTML app in an iframe via blob URL
+    const blob = new Blob([app.code], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    createWindow(id, app.icon+' '+app.name, 800, 560, cx, cy, `
+      <iframe src="${blobUrl}" style="flex:1;border:none;width:100%;height:100%;"
+        sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"></iframe>
+    `);
+  } else if (app.type === 'js') {
+    // JS apps: inject into a sandboxed container with a minimal host page
+    const hostHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#0d0d1a;color:#f3f3f3;font-family:Inter,sans-serif;}</style></head><body><div id="app"></div><script>${app.code}<\/script></html>`;
+    const blob = new Blob([hostHtml], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    createWindow(id, app.icon+' '+app.name, 800, 560, cx, cy, `
+      <iframe src="${blobUrl}" style="flex:1;border:none;width:100%;height:100%;"
+        sandbox="allow-scripts allow-forms allow-modals allow-popups allow-same-origin"></iframe>
+    `);
+  }
+  focusWindow(id);
+}
+
+function refreshInstalledUI() {
+  // Update start menu installed section
+  const section = document.getElementById('start-installed-section');
+  const grid    = document.getElementById('start-installed-grid');
+  if (!section || !grid) return;
+  const apps = Object.values(storeInstalled);
+  if (!apps.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  grid.innerHTML = apps.map(a => `
+    <button class="start-app" onclick="launchInstalledApp('${a.id}');closeStart()">
+      <div class="start-app-icon">${a.icon||'📦'}</div>
+      <div class="start-app-name">${a.name}</div>
+    </button>
+  `).join('');
+  // Update dynamic desktop icons (top-right of desktop, row below built-ins)
+  const ddi = document.getElementById('dynamic-desktop-icons');
+  if (ddi) {
+    ddi.innerHTML = apps.map((a, i) => `
+      <div class="desktop-icon" style="top:${24 + Math.floor(i/4)*80}px;left:${336 + (i%4)*80}px;" onclick="launchInstalledApp('${a.id}')">
+        <div class="desktop-icon-img">${a.icon||'📦'}</div>
+        <div class="desktop-icon-label">${a.name}</div>
+      </div>
+    `).join('');
+  }
+}
+
+// ── KEYBOARD SHORTCUTS ───────────────
+document.addEventListener('keydown', e => {
+  if ((e.metaKey||e.ctrlKey) && e.key==='b') { e.preventDefault(); openApp('browser'); }
+  if ((e.metaKey||e.ctrlKey) && e.key==='g') { e.preventDefault(); openApp('games'); }
+  if (e.key === 'F11') { toggleFullscreen(); }
+  if (e.key === 'Escape') closeStart();
+});
+</script>
+</body>
+</html>
