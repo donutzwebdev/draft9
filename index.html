@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Draft 9</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{
@@ -265,6 +267,16 @@ body.mobile .settings-sidebar{width:130px;}
 .store-err{text-align:center;padding:30px;color:#ff6b6b;font-size:.8rem;line-height:1.6;}
 .store-err-icon{font-size:2rem;margin-bottom:8px;}
 
+/* ── OOBE AUTH STEP ── */
+.setup-tab{flex:1;padding:8px;text-align:center;font-size:.78rem;font-weight:600;cursor:pointer;background:none;border:none;color:var(--text2);font-family:var(--font);transition:all .18s;}
+.setup-tab.active{background:var(--accent);color:#fff;}
+.setup-field{display:flex;flex-direction:column;gap:5px;}
+.setup-field label{font-size:.7rem;color:var(--text2);font-weight:600;letter-spacing:.05em;}
+.setup-error{font-size:.74rem;color:#ff6b6b;display:none;padding:4px 0;}
+.setup-error.show{display:block;}
+.setup-guest{color:var(--text3);font-size:.74rem;cursor:pointer;text-align:center;}
+.setup-guest:hover{color:var(--text2);}
+
 /* ── DESKTOP ICONS ── */
 .desktop-icon{position:absolute;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;padding:8px;border-radius:8px;width:72px;text-align:center;transition:background .15s;z-index:1;}
 .desktop-icon:hover,.desktop-icon:active{background:rgba(255,255,255,.1);}
@@ -405,6 +417,34 @@ body.mobile .desktop-icon{width:64px;}
 
     <!-- Step 6: Welcome -->
     <div class="oobe-step" id="oobe-step-6">
+      <div>
+        <div class="oobe-eyebrow">Step 6 of 6</div>
+        <div class="oobe-title">Create or sign in to your account</div>
+        <div class="oobe-sub" style="margin-top:6px;">Your Draft 9 account works across all apps including Messages.</div>
+      </div>
+      <div class="setup-tabs" style="display:flex;background:rgba(0,0,0,.3);border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+        <button class="setup-tab active" id="d9-tab-in" onclick="d9SwitchTab('in')">Sign In</button>
+        <button class="setup-tab" id="d9-tab-up" onclick="d9SwitchTab('up')">Sign Up</button>
+      </div>
+      <div id="d9-form-in" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="setup-field"><label>USERNAME</label><input class="oobe-input" id="d9-in-user" type="text" placeholder="Your username" maxlength="32"></div>
+        <div class="setup-field"><label>PASSWORD</label><input class="oobe-input" id="d9-in-pass" type="password" placeholder="••••••••"></div>
+        <div class="setup-error" id="d9-in-err"></div>
+      </div>
+      <div id="d9-form-up" style="display:none;flex-direction:column;gap:12px;">
+        <div class="setup-field"><label>USERNAME</label><input class="oobe-input" id="d9-up-user" type="text" placeholder="Choose a username" maxlength="32"></div>
+        <div class="setup-field"><label>PASSWORD</label><input class="oobe-input" id="d9-up-pass" type="password" placeholder="Min 6 characters"></div>
+        <div class="setup-error" id="d9-up-err"></div>
+      </div>
+      <div class="oobe-nav">
+        <button class="oobe-btn secondary" onclick="oobePrev()">← Back</button>
+        <button class="oobe-btn" id="d9-auth-btn" onclick="d9DoAuth()" style="flex:1;">Continue →</button>
+      </div>
+      <div class="setup-guest" onclick="finishOobe(true)" style="text-align:center;font-size:.75rem;color:var(--text3);cursor:pointer;">Continue as guest →</div>
+    </div>
+
+    <!-- WELCOME (shown after auth) -->
+    <div class="oobe-step" id="oobe-step-welcome">
       <div class="welcome-icon">🖥️</div>
       <div>
         <div class="oobe-eyebrow">You're all set</div>
@@ -414,8 +454,7 @@ body.mobile .desktop-icon{width:64px;}
         This web-based Operating System is <strong>as simple as you'd think</strong> — if you've used a computer before, this should be easy. I appreciate you came here. <strong>Enjoy!</strong>
       </div>
       <div class="oobe-nav">
-        <button class="oobe-btn secondary" onclick="oobePrev()">← Back</button>
-        <button class="oobe-btn" onclick="finishOobe()" style="flex:1;">Let's go →</button>
+        <button class="oobe-btn" onclick="finishOobe(false)" style="flex:1;">Let's go →</button>
       </div>
     </div>
 
@@ -537,7 +576,14 @@ window.addEventListener('load', () => {
     hideBoot();
     if (oobeOk && prefs) {
       applyPrefs(JSON.parse(prefs));
-      currentUser = { username: oobeData.name || 'User' };
+      // Restore saved session
+      const savedSession = localStorage.getItem('d9_session');
+      if (savedSession) {
+        try { currentUser = JSON.parse(savedSession); }
+        catch(e) { currentUser = { username: oobeData.name||'User', uid:null, pfp:null, isAdmin:false }; }
+      } else {
+        currentUser = { username: oobeData.name||'User', uid:null, pfp:null, isAdmin:false };
+      }
       enterDesktop();
     } else {
       startOobe();
@@ -606,16 +652,95 @@ function oobeNext() {
 }
 function oobePrev() { if (oobeStep > 1) showOobeStep(oobeStep - 1); }
 
-function finishOobe() {
-  setDeviceMode(oobeData.device);
+// ── DRAFT 9 FIREBASE AUTH ────────────
+const D9_ADMINS = ['u_tkvogkbun6'];
+let d9db = null;
+let d9AuthTab = 'in';
+
+function initD9Firebase() {
+  if (d9db) return;
+  if (!firebase.apps.length) {
+    firebase.initializeApp({
+      apiKey:"AIzaSyB4VZR4PTk27NTb0Ox7UEBiSsxP6zCVinw",
+      authDomain:"draft9-fe68d.firebaseapp.com",
+      projectId:"draft9-fe68d",
+      storageBucket:"draft9-fe68d.firebasestorage.app",
+      messagingSenderId:"905853292900",
+      appId:"1:905853292900:web:a48fccec2379ccb6642a71"
+    });
+  }
+  d9db = firebase.firestore();
+}
+
+function d9SwitchTab(t) {
+  d9AuthTab = t;
+  document.getElementById('d9-tab-in').classList.toggle('active', t==='in');
+  document.getElementById('d9-tab-up').classList.toggle('active', t==='up');
+  document.getElementById('d9-form-in').style.display = t==='in'?'flex':'none';
+  document.getElementById('d9-form-up').style.display = t==='up'?'flex':'none';
+}
+
+function d9DoAuth() {
+  initD9Firebase();
+  const btn = document.getElementById('d9-auth-btn');
+  btn.disabled = true; btn.textContent = 'Please wait…';
+  if (d9AuthTab === 'in') {
+    const user = document.getElementById('d9-in-user').value.trim();
+    const pass = document.getElementById('d9-in-pass').value;
+    const err  = document.getElementById('d9-in-err');
+    err.classList.remove('show');
+    if (!user||!pass) { showOobeErr(err,'Fill in all fields.'); btn.disabled=false; btn.textContent='Continue →'; return; }
+    d9db.collection('accounts').where('username','==',user).where('password','==',d9hp(pass)).get()
+      .then(snap => {
+        if (snap.empty) { showOobeErr(err,'Wrong username or password.'); btn.disabled=false; btn.textContent='Continue →'; return; }
+        const d = snap.docs[0].data();
+        currentUser = { username: d.username, uid: d.uid, pfp: d.pfp||null, isAdmin: D9_ADMINS.includes(d.uid) };
+        oobeData.name = d.username;
+        localStorage.setItem('d9_session', JSON.stringify(currentUser));
+        showWelcomeStep();
+      }).catch(e => { showOobeErr(err,e.message); btn.disabled=false; btn.textContent='Continue →'; });
+  } else {
+    const user = document.getElementById('d9-up-user').value.trim();
+    const pass = document.getElementById('d9-up-pass').value;
+    const err  = document.getElementById('d9-up-err');
+    err.classList.remove('show');
+    if (!user||!pass) { showOobeErr(err,'Fill in all fields.'); btn.disabled=false; btn.textContent='Continue →'; return; }
+    if (user.length<2) { showOobeErr(err,'Username too short.'); btn.disabled=false; btn.textContent='Continue →'; return; }
+    if (pass.length<6) { showOobeErr(err,'Password must be 6+ characters.'); btn.disabled=false; btn.textContent='Continue →'; return; }
+    d9db.collection('accounts').where('username','==',user).get().then(snap => {
+      if (!snap.empty) { showOobeErr(err,'Username already taken.'); btn.disabled=false; btn.textContent='Continue →'; return; }
+      const uid = 'u_'+Math.random().toString(36).substring(2,12);
+      return d9db.collection('accounts').doc(uid).set({
+        uid, username:user, password:d9hp(pass), pfp:null, blocked:[], createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        currentUser = { username:user, uid, pfp:null, isAdmin: D9_ADMINS.includes(uid) };
+        oobeData.name = user;
+        localStorage.setItem('d9_session', JSON.stringify(currentUser));
+        showWelcomeStep();
+      });
+    }).catch(e => { showOobeErr(err,e.message); btn.disabled=false; btn.textContent='Continue →'; });
+  }
+}
+
+function d9hp(p){ let h=0; for(let i=0;i<p.length;i++){h=((h<<5)-h)+p.charCodeAt(i);h|=0;} return 'h'+Math.abs(h).toString(16); }
+
+function showOobeErr(el, msg) { el.textContent=msg; el.classList.add('show'); }
+
+function showWelcomeStep() {
+  document.getElementById('welcome-title').textContent = 'Welcome to Draft 9, ' + (currentUser?.username||'') + '!';
+  document.querySelectorAll('.oobe-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('oobe-step-welcome').classList.add('active');
+}
+
+function finishOobe(guest=false) {
+  if (guest) { currentUser = { username: oobeData.name||'Guest', uid:null, pfp:null, isAdmin:false }; }
   applyAccent(oobeData.accent);
   applyWallpaper(oobeData.wpColor, oobeData.wpImage);
   savePrefs();
-  localStorage.setItem('d9_oobe_done', '1');
-  currentUser = { username: oobeData.name || 'User' };
+  localStorage.setItem('d9_oobe_done','1');
   const oobe = document.getElementById('oobe');
-  oobe.style.transition = 'opacity .5s'; oobe.style.opacity = '0';
-  setTimeout(() => { oobe.style.display = 'none'; enterDesktop(); }, 500);
+  oobe.style.transition='opacity .5s'; oobe.style.opacity='0';
+  setTimeout(()=>{ oobe.style.display='none'; enterDesktop(); },500);
 }
 
 // ── Step 1: Device ───────────────────
@@ -761,9 +886,9 @@ function enterDesktop() {
   }, 50);
   const name = currentUser?.username || 'User';
   document.getElementById('tb-avatar').textContent    = name[0].toUpperCase();
-  document.getElementById('tb-name').textContent      = name;
+  document.getElementById('tb-name').textContent      = name + (currentUser?.isAdmin ? ' 🛡' : '');
   document.getElementById('start-avatar').textContent = name[0].toUpperCase();
-  document.getElementById('start-username').textContent = name;
+  document.getElementById('start-username').textContent = name + (currentUser?.isAdmin ? ' — Admin' : '');
   showNotif('Draft 9', 'Welcome, ' + name + '! Enjoy.');
   loadInstalledApps();
   refreshInstalledUI();
@@ -771,7 +896,7 @@ function enterDesktop() {
 }
 
 function signOut() {
-  localStorage.removeItem('d9_oobe_done'); localStorage.removeItem('d9_prefs');
+  localStorage.removeItem('d9_oobe_done'); localStorage.removeItem('d9_prefs'); localStorage.removeItem('d9_session');
   currentUser = null;
   Object.keys(windows).forEach(id => { const w = document.getElementById(id); if (w) w.remove(); });
   windows = {};
