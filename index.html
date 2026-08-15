@@ -848,7 +848,12 @@ function createWindow(id, title, w, h, x, y, bodyHtml) {
   if (windows[id]) { focusWindow(id); return document.getElementById(id); }
   const win = document.createElement('div');
   win.className = 'win focused'; win.id = id;
-  if (!isMobile) win.style.cssText = `width:${w}px;height:${h}px;left:${x}px;top:${y}px;`;
+  if (!isMobile) {
+    win.style.width  = w + 'px';
+    win.style.height = h + 'px';
+    win.style.left   = x + 'px';
+    win.style.top    = y + 'px';
+  }
   win.innerHTML = `
     <div class="win-titlebar" id="tb-${id}">
       <div class="win-title">${title}</div>
@@ -891,11 +896,19 @@ function maximizeWindow(id) {
   const win = document.getElementById(id); if (!win || !windows[id] || isMobile) return;
   if (windows[id].maxed) {
     const r = windows[id].prevRect;
-    win.style.cssText = `width:${r.w}px;height:${r.h}px;left:${r.x}px;top:${r.y}px;border-radius:var(--radius-lg);`;
+    win.style.width        = r.w + 'px';
+    win.style.height       = r.h + 'px';
+    win.style.left         = r.x + 'px';
+    win.style.top          = r.y + 'px';
+    win.style.borderRadius = 'var(--radius-lg)';
     windows[id].maxed = false;
   } else {
     windows[id].prevRect = { w: win.offsetWidth, h: win.offsetHeight, x: win.offsetLeft, y: win.offsetTop };
-    win.style.cssText = `width:100vw;height:calc(100vh - var(--taskbar-h));left:0;top:0;border-radius:0;`;
+    win.style.width        = '100vw';
+    win.style.height       = 'calc(100vh - var(--taskbar-h))';
+    win.style.left         = '0';
+    win.style.top          = '0';
+    win.style.borderRadius = '0';
     windows[id].maxed = true;
   }
 }
