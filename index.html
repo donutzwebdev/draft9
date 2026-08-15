@@ -653,7 +653,7 @@ function oobeNext() {
 function oobePrev() { if (oobeStep > 1) showOobeStep(oobeStep - 1); }
 
 // ── DRAFT 9 FIREBASE AUTH ────────────
-const D9_ADMINS = ['u_tkvogkbun6'];
+const D9_ADMINS = ['u_mdryghaqwr'];
 let d9db = null;
 let d9AuthTab = 'in';
 
@@ -1040,10 +1040,41 @@ function maximizeWindow(id) {
 
 function updateTaskbarDot(id, open) {
   const appId = id.replace('win-', '');
-  const tbBtn = document.getElementById('tb-' + appId); if (!tbBtn) return;
-  let dot = tbBtn.querySelector('.tb-dot');
-  if (open && !dot) { dot = document.createElement('div'); dot.className = 'tb-dot'; tbBtn.appendChild(dot); tbBtn.classList.add('active'); }
-  else if (!open && dot) { dot.remove(); tbBtn.classList.remove('active'); }
+  let tbBtn = document.getElementById('tb-' + appId);
+
+  if (open) {
+    if (!tbBtn) {
+      // Dynamically create a taskbar button for this window (e.g. store apps)
+      const win = document.getElementById(id);
+      const titleEl = win ? win.querySelector('.win-title') : null;
+      const label = titleEl ? titleEl.textContent.trim() : appId;
+      tbBtn = document.createElement('button');
+      tbBtn.className = 'tb-btn active';
+      tbBtn.id = 'tb-' + appId;
+      tbBtn.title = label;
+      tbBtn.style.maxWidth = '80px';
+      tbBtn.style.fontSize = '.7rem';
+      tbBtn.style.overflow = 'hidden';
+      tbBtn.style.textOverflow = 'ellipsis';
+      tbBtn.style.whiteSpace = 'nowrap';
+      tbBtn.textContent = label.length > 10 ? label.substring(0,10)+'…' : label;
+      tbBtn.onclick = () => openApp(appId);
+      document.querySelector('.taskbar-center').appendChild(tbBtn);
+    }
+    tbBtn.classList.add('active');
+    let dot = tbBtn.querySelector('.tb-dot');
+    if (!dot) { dot = document.createElement('div'); dot.className = 'tb-dot'; tbBtn.appendChild(dot); }
+  } else {
+    if (tbBtn) {
+      // Remove dot
+      const dot = tbBtn.querySelector('.tb-dot');
+      if (dot) dot.remove();
+      tbBtn.classList.remove('active');
+      // Remove dynamic button (not a pinned app)
+      const pinned = ['browser','games','settings','store'];
+      if (!pinned.includes(appId)) tbBtn.remove();
+    }
+  }
 }
 
 function makeDraggable(win, handle) {
