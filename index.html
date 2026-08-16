@@ -310,6 +310,30 @@ body.mobile .desktop-icon{width:64px;}
   <div class="oobe-dots" id="oobe-dots"></div>
   <div class="oobe-card" id="oobe-card">
 
+    <!-- Step 0: New or Existing User -->
+    <div class="oobe-step active" id="oobe-step-0">
+      <div>
+        <div class="oobe-eyebrow">Welcome</div>
+        <div class="oobe-title">Have you used Draft 9 before?</div>
+        <div class="oobe-sub" style="margin-top:6px;">Pick the option that fits you.</div>
+      </div>
+      <div class="device-cards">
+        <div class="device-card" id="user-new" onclick="selectUserType('new')">
+          <div class="device-card-icon">✨</div>
+          <div class="device-card-label">New User</div>
+          <div class="device-card-sub">First time here</div>
+        </div>
+        <div class="device-card" id="user-existing" onclick="selectUserType('existing')">
+          <div class="device-card-icon">👤</div>
+          <div class="device-card-label">Existing User</div>
+          <div class="device-card-sub">I have an account</div>
+        </div>
+      </div>
+      <div class="oobe-nav">
+        <button class="oobe-btn" id="oobe-utype-btn" onclick="oobeNext()" disabled>Continue →</button>
+      </div>
+    </div>
+
     <!-- Step 1: Device -->
     <div class="oobe-step active" id="oobe-step-1">
       <div>
@@ -418,11 +442,11 @@ body.mobile .desktop-icon{width:64px;}
     <!-- Step 6: Welcome -->
     <div class="oobe-step" id="oobe-step-6">
       <div>
-        <div class="oobe-eyebrow">Step 6 of 6</div>
-        <div class="oobe-title">Create or sign in to your account</div>
+        <div class="oobe-eyebrow">Almost there</div>
+        <div class="oobe-title" id="auth-step-title">Create your account</div>
         <div class="oobe-sub" style="margin-top:6px;">Your Draft 9 account works across all apps including Messages.</div>
       </div>
-      <div class="setup-tabs" style="display:flex;background:rgba(0,0,0,.3);border-radius:8px;overflow:hidden;border:1px solid var(--border);">
+      <div class="setup-tabs" id="auth-tabs" style="display:flex;background:rgba(0,0,0,.3);border-radius:8px;overflow:hidden;border:1px solid var(--border);">
         <button class="setup-tab active" id="d9-tab-in" onclick="d9SwitchTab('in')">Sign In</button>
         <button class="setup-tab" id="d9-tab-up" onclick="d9SwitchTab('up')">Sign Up</button>
       </div>
@@ -440,7 +464,7 @@ body.mobile .desktop-icon{width:64px;}
         <button class="oobe-btn secondary" onclick="oobePrev()">← Back</button>
         <button class="oobe-btn" id="d9-auth-btn" onclick="d9DoAuth()" style="flex:1;">Continue →</button>
       </div>
-      <div class="setup-guest" onclick="finishOobe(true)" style="text-align:center;font-size:.75rem;color:var(--text3);cursor:pointer;">Continue as guest →</div>
+      <div class="setup-guest" onclick="finishOobe(true)">Continue as guest →</div>
     </div>
 
     <!-- WELCOME (shown after auth) -->
@@ -545,7 +569,8 @@ body.mobile .desktop-icon{width:64px;}
 // ── CONFIG ──────────────────────────────────────
 const SCRAMJET_CDN = 'https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@latest/dist/';
 const WISP_SERVER  = 'wss://wisp.mercuryworkshop.dev/wisp/';
-const OOBE_TOTAL   = 6;
+const OOBE_TOTAL = 7;
+let oobeUserType = ''; // 'new' or 'existing'
 
 // ── STATE ────────────────────────────────────────
 let currentUser = null;
@@ -609,8 +634,14 @@ function savePrefs() {
 }
 
 // ── OOBE ─────────────────────────────────────────
+function selectUserType(type) {
+  oobeUserType = type;
+  document.getElementById('user-new').classList.toggle('selected', type==='new');
+  document.getElementById('user-existing').classList.toggle('selected', type==='existing');
+  document.getElementById('oobe-utype-btn').disabled = false;
+}
+
 function startOobe() {
-  // Auto-detect device as default selection
   const autoMobile = window.innerWidth < 768 || /Mobi|Android/i.test(navigator.userAgent);
   if (autoMobile) selectDevice('mobile'); else selectDevice('desktop');
   document.getElementById('oobe').style.display = 'flex';
@@ -638,9 +669,22 @@ function showOobeStep(n) {
   card.style.animation = 'none';
   requestAnimationFrame(() => card.style.animation = '');
   oobeStep = n; renderOobeDots();
+  // Configure auth step for new users — only show Sign Up
+  if (n === 6 && oobeUserType === 'new') {
+    document.getElementById('auth-tabs').style.display = 'none';
+    document.getElementById('auth-step-title').textContent = 'Create your account';
+    d9SwitchTab('up');
+  }
 }
 
 function oobeNext() {
+  if (oobeStep === 0 && !oobeUserType) return;
+  if (oobeStep === 0 && oobeUserType === 'existing') {
+    // Existing user — skip straight to sign in
+    initD9Firebase();
+    showExistingUserSignIn();
+    return;
+  }
   if (oobeStep === 1 && !oobeData.device) return;
   if (oobeStep === 2) {
     const n = document.getElementById('oobe-name').value.trim();
@@ -694,6 +738,7 @@ function d9DoAuth() {
       .then(snap => {
         if (snap.empty) { showOobeErr(err,'Wrong username or password.'); btn.disabled=false; btn.textContent='Continue →'; return; }
         const d = snap.docs[0].data();
+        if (d.banned) { showOobeErr(err,'This account has been banned from Draft 9.'); btn.disabled=false; btn.textContent='Continue →'; return; }
         currentUser = { username: d.username, uid: d.uid, pfp: d.pfp||null, isAdmin: D9_ADMINS.includes(d.uid) };
         oobeData.name = d.username;
         localStorage.setItem('d9_session', JSON.stringify(currentUser));
@@ -724,7 +769,87 @@ function d9DoAuth() {
 
 function d9hp(p){ let h=0; for(let i=0;i<p.length;i++){h=((h<<5)-h)+p.charCodeAt(i);h|=0;} return 'h'+Math.abs(h).toString(16); }
 
-function showOobeErr(el, msg) { el.textContent=msg; el.classList.add('show'); }
+function showExistingUserSignIn() {
+  // Show a dedicated full-screen sign in card instead of OOBE card
+  const oobe = document.getElementById('oobe');
+  oobe.style.display = 'none';
+  const card = document.createElement('div');
+  card.id = 'existing-signin';
+  card.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0d0d1a,#121228);display:flex;align-items:center;justify-content:center;z-index:9001;';
+  card.innerHTML = `
+    <div class="oobe-card" style="animation:oobeIn .4s cubic-bezier(.2,.8,.4,1);">
+      <div>
+        <div class="oobe-eyebrow">Welcome back</div>
+        <div class="oobe-title">Sign in to Draft 9</div>
+        <div class="oobe-sub" style="margin-top:6px;">All your apps and settings will load automatically.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="setup-field"><label>USERNAME</label><input class="oobe-input" id="ex-user" type="text" placeholder="Your username" maxlength="32" onkeydown="if(event.key==='Enter')doExistingSignIn()"></div>
+        <div class="setup-field"><label>PASSWORD</label><input class="oobe-input" id="ex-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doExistingSignIn()"></div>
+        <div class="setup-error" id="ex-err"></div>
+      </div>
+      <div class="oobe-nav">
+        <button class="oobe-btn secondary" onclick="document.getElementById('existing-signin').remove();document.getElementById('oobe').style.display='flex';">← Back</button>
+        <button class="oobe-btn" onclick="doExistingSignIn()" style="flex:1;">Sign In & Load →</button>
+      </div>
+    </div>`;
+  document.body.appendChild(card);
+  setTimeout(() => document.getElementById('ex-user').focus(), 100);
+}
+
+function doExistingSignIn() {
+  const user = document.getElementById('ex-user').value.trim();
+  const pass = document.getElementById('ex-pass').value;
+  const err  = document.getElementById('ex-err');
+  err.classList.remove('show');
+  if (!user||!pass) { showOobeErr(err,'Fill in all fields.'); return; }
+  d9db.collection('accounts').where('username','==',user).where('password','==',d9hp(pass)).get()
+    .then(snap => {
+      if (snap.empty) { showOobeErr(err,'Wrong username or password.'); return; }
+      const d = snap.docs[0].data();
+      if (d.banned) { showOobeErr(err,'This account has been banned.'); return; }
+      currentUser = { username: d.username, uid: d.uid, pfp: d.pfp||null, isAdmin: D9_ADMINS.includes(d.uid) };
+      oobeData.name = d.username;
+      localStorage.setItem('d9_session', JSON.stringify(currentUser));
+      // Load saved prefs from account
+      const savedPrefs = d.prefs ? JSON.parse(d.prefs) : null;
+      if (savedPrefs) { applyPrefs(savedPrefs); Object.assign(oobeData, savedPrefs); savePrefs(); }
+      localStorage.setItem('d9_oobe_done','1');
+      document.getElementById('existing-signin').remove();
+      loadUserAppsAndEnter();
+    }).catch(e => showOobeErr(err, e.message));
+}
+
+async function loadUserAppsAndEnter() {
+  // Load installed apps from Firebase account
+  if (currentUser?.uid && d9db) {
+    try {
+      const snap = await d9db.collection('accounts').doc(currentUser.uid).get();
+      if (snap.exists) {
+        const data = snap.data();
+        if (data.installedApps) {
+          storeInstalled = data.installedApps;
+          localStorage.setItem('d9_installed', JSON.stringify(storeInstalled));
+        }
+      }
+    } catch(e) { console.warn('Could not load apps:', e); }
+  }
+  applyAccent(oobeData.accent);
+  applyWallpaper(oobeData.wpColor, oobeData.wpImage);
+  setDeviceMode(oobeData.device || 'desktop');
+  enterDesktop();
+}
+
+// Save installed apps to Firebase when they change
+function syncInstalledApps() {
+  if (!currentUser?.uid || !d9db) return;
+  const meta = {};
+  Object.entries(storeInstalled).forEach(([id, app]) => {
+    const { code, ...rest } = app;
+    meta[id] = rest;
+  });
+  d9db.collection('accounts').doc(currentUser.uid).update({ installedApps: meta }).catch(()=>{});
+}
 
 function showWelcomeStep() {
   document.getElementById('welcome-title').textContent = 'Welcome to Draft 9, ' + (currentUser?.username||'') + '!';
@@ -1041,23 +1166,19 @@ function maximizeWindow(id) {
 function updateTaskbarDot(id, open) {
   const appId = id.replace('win-', '');
   let tbBtn = document.getElementById('tb-' + appId);
-
   if (open) {
     if (!tbBtn) {
-      // Dynamically create a taskbar button for this window (e.g. store apps)
       const win = document.getElementById(id);
       const titleEl = win ? win.querySelector('.win-title') : null;
-      const label = titleEl ? titleEl.textContent.trim() : appId;
+      const fullLabel = titleEl ? titleEl.textContent.trim() : appId;
+      // Extract just the emoji/icon (first char cluster)
+      const iconMatch = fullLabel.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic}|\S+\s)/u);
+      const icon = iconMatch ? iconMatch[0].trim() : fullLabel.substring(0,2);
       tbBtn = document.createElement('button');
       tbBtn.className = 'tb-btn active';
       tbBtn.id = 'tb-' + appId;
-      tbBtn.title = label;
-      tbBtn.style.maxWidth = '80px';
-      tbBtn.style.fontSize = '.7rem';
-      tbBtn.style.overflow = 'hidden';
-      tbBtn.style.textOverflow = 'ellipsis';
-      tbBtn.style.whiteSpace = 'nowrap';
-      tbBtn.textContent = label.length > 10 ? label.substring(0,10)+'…' : label;
+      tbBtn.title = fullLabel;
+      tbBtn.textContent = icon;
       tbBtn.onclick = () => openApp(appId);
       document.querySelector('.taskbar-center').appendChild(tbBtn);
     }
@@ -1066,11 +1187,9 @@ function updateTaskbarDot(id, open) {
     if (!dot) { dot = document.createElement('div'); dot.className = 'tb-dot'; tbBtn.appendChild(dot); }
   } else {
     if (tbBtn) {
-      // Remove dot
       const dot = tbBtn.querySelector('.tb-dot');
       if (dot) dot.remove();
       tbBtn.classList.remove('active');
-      // Remove dynamic button (not a pinned app)
       const pinned = ['browser','games','settings','store'];
       if (!pinned.includes(appId)) tbBtn.remove();
     }
@@ -1384,6 +1503,7 @@ function saveInstalledApps() {
     meta[id] = rest;
   });
   localStorage.setItem('d9_installed', JSON.stringify(meta));
+  syncInstalledApps();
 }
 
 function openStore() {
