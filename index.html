@@ -184,21 +184,6 @@ body.mobile .win-titlebar{cursor:default;}
 .browser-prog{height:100%;background:var(--accent);border-radius:2px;width:0;transition:width .3s;}
 .browser-status{font-size:.63rem;color:var(--text3);font-family:monospace;}
 
-/* ── GAMES ── */
-.games-body{display:flex;flex-direction:column;height:100%;background:rgba(10,10,20,.5);}
-.games-header{padding:12px 14px 8px;border-bottom:1px solid var(--border);font-size:.92rem;font-weight:600;display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding:12px;overflow-y:auto;flex:1;}
-.game-card{background:var(--glass);border:1px solid var(--border);border-radius:10px;overflow:hidden;cursor:pointer;transition:all .18s;display:flex;flex-direction:column;}
-.game-card:hover,.game-card:active{background:var(--glass2);border-color:var(--border2);transform:translateY(-2px);box-shadow:var(--shadow2);}
-.game-thumb{height:80px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;background:linear-gradient(135deg,rgba(0,120,212,.15),rgba(0,0,0,.3));}
-.game-info{padding:7px 9px 9px;}
-.game-name{font-size:.76rem;font-weight:600;margin-bottom:2px;}
-.game-tag{font-size:.63rem;color:var(--text3);}
-.games-viewer{flex:1;display:flex;flex-direction:column;position:absolute;inset:36px 0 0 0;background:rgba(10,10,20,.97);z-index:10;}
-.games-viewer-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
-.games-back{background:var(--glass);border:1px solid var(--border);border-radius:6px;padding:6px 12px;color:var(--text);font-size:.75rem;font-family:var(--font);cursor:pointer;transition:all .15s;min-height:34px;}
-.games-back:hover{background:var(--glass2);}
-.games-iframe{flex:1;border:none;width:100%;}
 
 /* ── SETTINGS ── */
 .settings-body{display:flex;height:100%;}
@@ -490,9 +475,7 @@ body.mobile .desktop-icon{width:64px;}
   <div class="desktop-icon" style="top:24px;left:16px;" onclick="openApp('browser')">
     <div class="desktop-icon-img">🌐</div><div class="desktop-icon-label">Browser</div>
   </div>
-  <div class="desktop-icon" style="top:24px;left:96px;" onclick="openApp('games')">
-    <div class="desktop-icon-img">🎮</div><div class="desktop-icon-label">Games</div>
-  </div>
+
   <div class="desktop-icon" style="top:24px;left:176px;" onclick="openApp('settings')">
     <div class="desktop-icon-img">⚙️</div><div class="desktop-icon-label">Settings</div>
   </div>
@@ -510,7 +493,6 @@ body.mobile .desktop-icon{width:64px;}
   </button>
   <div class="taskbar-center">
     <button class="tb-btn" id="tb-browser" onclick="openApp('browser')" title="Browser">🌐</button>
-    <button class="tb-btn" id="tb-games" onclick="openApp('games')" title="Games">🎮</button>
     <button class="tb-btn" id="tb-settings" onclick="openApp('settings')" title="Settings">⚙️</button>
     <button class="tb-btn" id="tb-store" onclick="openApp('store')" title="Store">🛒</button>
 
@@ -532,9 +514,6 @@ body.mobile .desktop-icon{width:64px;}
   <div class="start-apps" id="start-apps-grid">
     <button class="start-app" onclick="openApp('browser');closeStart()">
       <div class="start-app-icon">🌐</div><div class="start-app-name">Browser</div>
-    </button>
-    <button class="start-app" onclick="openApp('games');closeStart()">
-      <div class="start-app-icon">🎮</div><div class="start-app-name">Games</div>
     </button>
     <button class="start-app" onclick="openApp('settings');closeStart()">
       <div class="start-app-icon">⚙️</div><div class="start-app-name">Settings</div>
@@ -1190,7 +1169,7 @@ function updateTaskbarDot(id, open) {
       const dot = tbBtn.querySelector('.tb-dot');
       if (dot) dot.remove();
       tbBtn.classList.remove('active');
-      const pinned = ['browser','games','settings','store'];
+      const pinned = ['browser','settings','store'];
       if (!pinned.includes(appId)) tbBtn.remove();
     }
   }
@@ -1229,7 +1208,6 @@ function openApp(app) {
     return;
   }
   if (app === 'browser') openBrowser();
-  else if (app === 'games') openGames();
   else if (app === 'settings') openSettings();
   else if (app === 'store') openStore();
 
@@ -1311,49 +1289,7 @@ function browserNav(dir) { const f = document.getElementById('browser-frame'); i
 function browserReload() { const f = document.getElementById('browser-frame'); if (f) f.contentWindow?.location.reload(); }
 
 // ── GAMES ────────────────────────────
-const GAMES = [
-  {name:'2048',icon:'🔢',tag:'Puzzle',url:'https://play2048.co/'},
-  {name:'Wordle',icon:'📝',tag:'Word',url:'https://www.nytimes.com/games/wordle/index.html'},
-  {name:'Snake',icon:'🐍',tag:'Arcade',url:'https://www.google.com/fbx?fbx=snake_arcade'},
-  {name:'Chess',icon:'♟️',tag:'Strategy',url:'https://www.chess.com/play/computer'},
-  {name:'Pac-Man',icon:'👾',tag:'Arcade',url:'https://www.google.com/logos/2010/pacman10-i.html'},
-  {name:'Tetris',icon:'🟦',tag:'Puzzle',url:'https://tetris.com/play-tetris'},
-  {name:'Flappy Bird',icon:'🐦',tag:'Arcade',url:'https://flappybird.io/'},
-  {name:'Minesweeper',icon:'💣',tag:'Puzzle',url:'https://minesweeperonline.com/'},
-  {name:'Cookie Clicker',icon:'🍪',tag:'Idle',url:'https://orteil.dashnet.org/cookieclicker/'},
-];
-function openGames() {
-  const id = 'win-games';
-  const cards = GAMES.map(g => `<div class="game-card" onclick="launchGame('${g.url}','${g.name}','${id}')"><div class="game-thumb">${g.icon}</div><div class="game-info"><div class="game-name">${g.name}</div><div class="game-tag">${g.tag}</div></div></div>`).join('');
-  createWindow(id, '🎮 Games', 560, 500, Math.max(0, window.innerWidth/2-280), 50,
-    `<div class="games-body"><div class="games-header">🎮 Games</div><div class="games-grid">${cards}</div></div>`);
-  focusWindow(id);
-}
-function launchGame(url, name, winId) {
-  const body = document.getElementById('body-' + winId); if (!body) return;
-  let v = body.querySelector('.games-viewer'); if (v) v.remove();
-  v = document.createElement('div'); v.className = 'games-viewer';
-  v.innerHTML = `<div class="games-viewer-bar"><button class="games-back" onclick="closeGame('${winId}')">← Back</button><span style="font-size:.78rem;color:var(--text2);margin-left:4px;">${name}</span></div><iframe class="games-iframe" src="${url}" allowfullscreen sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>`;
-  body.style.position = 'relative'; body.appendChild(v);
-}
-function closeGame(winId) { const body = document.getElementById('body-'+winId); if (!body) return; const v = body.querySelector('.games-viewer'); if (v) v.remove(); }
 
-// ── SETTINGS ─────────────────────────
-function openSettings() {
-  const id = 'win-settings';
-  createWindow(id, '⚙️ Settings', 540, 480, Math.max(0, window.innerWidth/2-270), 70,
-    `<div class="settings-body">
-      <div class="settings-sidebar">
-        <button class="settings-nav-item active" onclick="settingsPage('account',this)">👤 Account</button>
-        <button class="settings-nav-item" onclick="settingsPage('appearance',this)">🎨 Appearance</button>
-        <button class="settings-nav-item" onclick="settingsPage('wallpaper',this)">🖼️ Wallpaper</button>
-        <button class="settings-nav-item" onclick="settingsPage('system',this)">💻 System</button>
-        <button class="settings-nav-item" onclick="settingsPage('about',this)">ℹ️ About</button>
-      </div>
-      <div class="settings-content" id="settings-content">${settingsAccountHTML()}</div>
-    </div>`);
-  focusWindow(id);
-}
 
 function settingsPage(page, btn) {
   document.querySelectorAll('.settings-nav-item').forEach(b => b.classList.remove('active'));
@@ -1694,7 +1630,6 @@ function refreshInstalledUI() {
 // ── KEYBOARD SHORTCUTS ───────────────
 document.addEventListener('keydown', e => {
   if ((e.metaKey||e.ctrlKey) && e.key==='b') { e.preventDefault(); openApp('browser'); }
-  if ((e.metaKey||e.ctrlKey) && e.key==='g') { e.preventDefault(); openApp('games'); }
   if (e.key === 'F11') { toggleFullscreen(); }
   if (e.key === 'Escape') closeStart();
 });
