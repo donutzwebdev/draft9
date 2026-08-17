@@ -475,14 +475,12 @@ body.mobile .desktop-icon{width:64px;}
   <div class="desktop-icon" style="top:24px;left:16px;" onclick="openApp('browser')">
     <div class="desktop-icon-img">🌐</div><div class="desktop-icon-label">Browser</div>
   </div>
-
-  <div class="desktop-icon" style="top:24px;left:176px;" onclick="openApp('settings')">
+  <div class="desktop-icon" style="top:24px;left:96px;" onclick="openApp('settings')">
     <div class="desktop-icon-img">⚙️</div><div class="desktop-icon-label">Settings</div>
   </div>
-  <div class="desktop-icon" style="top:24px;left:256px;" onclick="openApp('store')">
+  <div class="desktop-icon" style="top:24px;left:176px;" onclick="openApp('store')">
     <div class="desktop-icon-img">🛒</div><div class="desktop-icon-label">Store</div>
   </div>
-
   <div id="dynamic-desktop-icons"></div>
 </div>
 
@@ -1288,7 +1286,23 @@ function browserGo() { const v = document.getElementById('browser-url')?.value; 
 function browserNav(dir) { const f = document.getElementById('browser-frame'); if (!f) return; dir<0 ? f.contentWindow?.history.back() : f.contentWindow?.history.forward(); }
 function browserReload() { const f = document.getElementById('browser-frame'); if (f) f.contentWindow?.location.reload(); }
 
-// ── GAMES ────────────────────────────
+
+// ── SETTINGS ─────────────────────────
+function openSettings() {
+  const id = 'win-settings';
+  createWindow(id, '⚙️ Settings', 540, 480, Math.max(0, window.innerWidth/2-270), 70,
+    `<div class="settings-body">
+      <div class="settings-sidebar">
+        <button class="settings-nav-item active" onclick="settingsPage('account',this)">👤 Account</button>
+        <button class="settings-nav-item" onclick="settingsPage('appearance',this)">🎨 Appearance</button>
+        <button class="settings-nav-item" onclick="settingsPage('wallpaper',this)">🖼️ Wallpaper</button>
+        <button class="settings-nav-item" onclick="settingsPage('system',this)">💻 System</button>
+        <button class="settings-nav-item" onclick="settingsPage('about',this)">ℹ️ About</button>
+      </div>
+      <div class="settings-content" id="settings-content">${settingsAccountHTML()}</div>
+    </div>`);
+  focusWindow(id);
+}
 
 
 function settingsPage(page, btn) {
