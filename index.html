@@ -1267,7 +1267,7 @@ async function initScramjet(startUrl) {
         setP(70, 'Starting controller…');
         const { ScramjetController } = $scramjetLoadController();
         scramjetCtrl = new ScramjetController({
-          prefix: '/scramjet/',
+          prefix: '/draft9/scramjet/',
           codec: { encode: u => encodeURIComponent(u), decode: u => decodeURIComponent(u) },
           files: {
             wasm: SCRAMJET_HOST + 'scramjet.wasm.wasm',
