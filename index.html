@@ -828,6 +828,8 @@ function syncInstalledApps() {
   d9db.collection('accounts').doc(currentUser.uid).update({ installedApps: meta }).catch(()=>{});
 }
 
+function showOobeErr(el, msg) { if(!el) return; el.textContent = msg; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 3000); }
+
 function showWelcomeStep() {
   document.getElementById('welcome-title').textContent = 'Welcome to Draft 9, ' + (currentUser?.username||'') + '!';
   document.querySelectorAll('.oobe-step').forEach(s=>s.classList.remove('active'));
@@ -1254,12 +1256,13 @@ async function initScramjet(startUrl) {
           if (window.$scramjetLoadController) { resolve(); return; }
           const s = document.createElement('script');
           s.src = SCRAMJET_HOST + 'scramjet.bundle.js';
+          s.type = 'module';
           s.onload = resolve;
           s.onerror = reject;
           document.head.appendChild(s);
         });
         setP(40, 'Registering service worker…');
-        await navigator.serviceWorker.register(SCRAMJET_HOST + 'scramjet.sw.js', { scope: '/' });
+        await navigator.serviceWorker.register('/draft9/scramjet.sw.js', { scope: '/draft9/' });
         await navigator.serviceWorker.ready;
         setP(70, 'Starting controller…');
         const { ScramjetController } = $scramjetLoadController();
