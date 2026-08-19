@@ -544,8 +544,8 @@ body.mobile .desktop-icon{width:64px;}
 
 <script>
 // ── CONFIG ──────────────────────────────────────
-const SCRAMJET_CDN = 'https://cdn.jsdelivr.net/npm/@mercuryworkshop/scramjet@latest/dist/';
-const WISP_SERVER  = 'wss://wisp.mercuryworkshop.dev/wisp/';
+const SCRAMJET_HOST = 'https://donutzwebdev.github.io/scramjet/';
+const WISP_SERVER   = 'wss://wisp.mercuryworkshop.dev/wisp/';
 const OOBE_TOTAL = 7;
 let oobeUserType = ''; // 'new' or 'existing'
 
@@ -1245,25 +1245,45 @@ async function initScramjet(startUrl) {
   if (!prog) return;
   const setP = (p, t) => { if (prog) prog.style.width = p + '%'; if (stat) stat.textContent = t; };
   try {
-    setP(10, 'Registering service worker…');
-    if (!navigator.serviceWorker) { setP(100, 'Direct mode.'); browserLoadDirect(startUrl); return; }
-    setP(40, 'Connecting WISP…');
+    if (!navigator.serviceWorker) { setP(100, 'Direct mode (no SW support).'); browserLoadDirect(startUrl); return; }
+    setP(15, 'Loading Scramjet…');
     if (!scramjetCtrl) {
       try {
-        const mod = await import(SCRAMJET_CDN + 'scramjet.controller.js');
-        scramjetCtrl = new mod.ScramjetController({
+        // Load the bundle from our hosted scramjet repo
+        await new Promise((resolve, reject) => {
+          if (window.$scramjetLoadController) { resolve(); return; }
+          const s = document.createElement('script');
+          s.src = SCRAMJET_HOST + 'scramjet.bundle.js';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+        setP(40, 'Registering service worker…');
+        await navigator.serviceWorker.register(SCRAMJET_HOST + 'scramjet.sw.js', { scope: '/' });
+        await navigator.serviceWorker.ready;
+        setP(70, 'Starting controller…');
+        const { ScramjetController } = $scramjetLoadController();
+        scramjetCtrl = new ScramjetController({
           prefix: '/scramjet/',
-          files: { wasm: SCRAMJET_CDN+'scramjet.wasm.js', worker: SCRAMJET_CDN+'scramjet.worker.js', client: SCRAMJET_CDN+'scramjet.client.js', shared: SCRAMJET_CDN+'scramjet.shared.js', sync: SCRAMJET_CDN+'scramjet.sync.js' },
-          codec: { encode: u => btoa(u), decode: u => atob(u) }
+          codec: { encode: u => encodeURIComponent(u), decode: u => decodeURIComponent(u) },
+          files: {
+            wasm: SCRAMJET_HOST + 'scramjet.wasm.wasm',
+            all:  SCRAMJET_HOST + 'scramjet.all.js',
+            sync: SCRAMJET_HOST + 'scramjet.sync.js'
+          },
+          flags: { captureErrors: true, strictRewrites: true, allowInvalidJs: true, allowFailedIntercepts: true }
         });
         await scramjetCtrl.init();
-        scramjetCtrl.connect(new BareMux.BareMuxConnection('/baremux/worker.js'));
-        await scramjetCtrl.setTransport('/epoxy/index.mjs', [{ wisp: WISP_SERVER }]);
-        setP(80, 'Ready!'); scramjetReady = true;
-      } catch (e) { console.warn('Scramjet:', e); setP(100, 'Direct mode.'); browserLoadDirect(startUrl); return; }
+        scramjetReady = true;
+        setP(100, 'Ready!');
+      } catch(e) {
+        console.warn('Scramjet init failed:', e);
+        setP(100, 'Direct mode (proxy unavailable).');
+        browserLoadDirect(startUrl); return;
+      }
     }
-    setP(100, 'Ready'); scramjetReady = true; browserGotoUrl(startUrl);
-  } catch (e) { browserLoadDirect(startUrl); }
+    browserGotoUrl(startUrl);
+  } catch(e) { browserLoadDirect(startUrl); }
 }
 function browserLoadDirect(url) {
   const f = document.getElementById('browser-frame'), i = document.getElementById('browser-init');
