@@ -1251,7 +1251,7 @@ async function initScramjet(startUrl) {
     setP(15, 'Loading Scramjet…');
     if (!scramjetCtrl) {
       try {
-        // Load scramjet bundle
+        // Load scramjet bundle (injects $scramjetLoadController global)
         await new Promise((resolve, reject) => {
           if (window.$scramjetLoadController) { resolve(); return; }
           const s = document.createElement('script');
@@ -1259,18 +1259,10 @@ async function initScramjet(startUrl) {
           s.onload = resolve; s.onerror = reject;
           document.head.appendChild(s);
         });
-        // Load bare-mux
-        await new Promise((resolve, reject) => {
-          if (window.BareMux) { resolve(); return; }
-          const s = document.createElement('script');
-          s.src = SCRAMJET_HOST + 'bare-mux.worker.js';
-          s.onload = resolve; s.onerror = reject;
-          document.head.appendChild(s);
-        });
         setP(40, 'Registering service worker…');
         await navigator.serviceWorker.register('/draft9/scramjet.sw.js', { scope: '/draft9/' });
         await navigator.serviceWorker.ready;
-        setP(70, 'Starting controller…');
+        setP(60, 'Setting up transport…');
         const { ScramjetController } = $scramjetLoadController();
         scramjetCtrl = new ScramjetController({
           prefix: '/draft9/scramjet/',
@@ -1282,9 +1274,10 @@ async function initScramjet(startUrl) {
           },
           flags: { captureErrors: true, strictRewrites: true, allowInvalidJs: true, allowFailedIntercepts: true }
         });
-        // Set up bare-mux with epoxy transport
-        const conn = new BareMux.BareMuxConnection(SCRAMJET_HOST + 'bare-mux.worker.js');
-        await conn.setTransport('https://unpkg.com/@mercuryworkshop/epoxy-transport@3/dist/index.mjs', [{ wisp: WISP_SERVER }]);
+        // BareMuxConnection starts a SharedWorker at the given path automatically
+        const conn = new BareMux.BareMuxConnection('/draft9/bare-mux.worker.js');
+        await conn.setTransport('/draft9/epoxy.js', [{ wisp: WISP_SERVER }]);
+        setP(80, 'Starting controller…');
         await scramjetCtrl.init('/draft9/scramjet.sw.js');
         scramjetReady = true;
         setP(100, 'Ready!');
