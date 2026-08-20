@@ -1237,7 +1237,7 @@ function openBrowser(url) {
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"></iframe>
   `);
   focusWindow(id);
-  initScramjet(url || 'https://www.google.com');
+  initScramjet(url || 'https://example.com');
 }
 
 let scramjetReady = false, scramjetCtrl = null;
@@ -1312,7 +1312,7 @@ function resolveUrl(raw) {
   raw = raw.trim();
   try { const u = new URL(raw); if (u.protocol==='http:') u.protocol='https:'; return u.toString(); } catch(e){}
   try { const u2 = new URL('https://'+raw); if (u2.hostname.includes('.')&&!u2.hostname.includes(' ')) return u2.toString(); } catch(e){}
-  return 'https://www.google.com/search?q=' + encodeURIComponent(raw);
+  return 'https://search.yahoo.com/search?p=' + encodeURIComponent(raw);
 }
 function browserGo() { const v = document.getElementById('browser-url')?.value; if (v) browserGotoUrl(resolveUrl(v)); }
 function browserNav(dir) { const f = document.getElementById('browser-frame'); if (!f) return; dir<0 ? f.contentWindow?.history.back() : f.contentWindow?.history.forward(); }

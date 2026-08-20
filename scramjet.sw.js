@@ -1,14 +1,10 @@
-importScripts('https://donutzwebdev.github.io/scramjet/scramjet.all.js');
+importScripts('/scramjet/scramjet_bundled.js');
 
-const { ScramjetServiceWorker } = $scramjetLoadWorker();
+const { ScramjetServiceWorker } = $scramjet;
 const sw = new ScramjetServiceWorker();
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith((async () => {
-    await sw.loadConfig();
-    if (sw.route(event)) {
-      return sw.fetch(event);
-    }
-    return fetch(event.request);
-  })());
+  if (sw.route(event)) {
+    event.respondWith(sw.fetch(event));
+  }
 });
